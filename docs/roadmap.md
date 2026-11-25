@@ -1,5 +1,7 @@
 # SignageOS Roadmap (Phases 3–6)
 
+> **Architecture Spec:** See [Multi-Tier Offline-Resilient Fleet Architecture](./designs/multi-tier-offline-fleet-architecture.md) for the detailed technical specification and Stage 1–5 implementation contract.
+
 This roadmap tracks **SignageOS** from its Phase 2 baseline (Docker stack, FFmpeg worker, CMS, and Web Simulator) through commercial DOOH parity while remaining **100% self-contained in Docker**, LAN-ready, and low-cost to self-host.
 
 ---

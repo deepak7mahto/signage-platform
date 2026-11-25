@@ -110,6 +110,11 @@ chmod +x infra/scripts/provision-android.sh
 ./infra/scripts/provision-android.sh
 ```
 
+## Architecture & Roadmap
+
+- [Multi-Tier Offline-Resilient Fleet Architecture (Design Spec)](./docs/designs/multi-tier-offline-fleet-architecture.md) — EGM-reviewed blueprint covering offline-first cache & playback, Tizen/webOS/Android/Windows box support, agency-to-client multi-tenancy, and remote fleet operations.
+- [SignageOS Roadmap](./docs/roadmap.md) — Staged execution plan from Phase 2 baseline through commercial DOOH parity.
+
 ## License
 
 [MIT](./LICENSE)
