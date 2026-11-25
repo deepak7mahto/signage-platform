@@ -1,0 +1,4137 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SignageOS 4K Platform API",
+    "version": "0.1.0",
+    "description": "Auto-generated from @signage/shared Zod schemas."
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "summary": "Health Check",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthUser"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "summary": "Current User",
+        "responses": {
+          "200": {
+            "description": "Session user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthUser"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/media": {
+      "get": {
+        "summary": "List Media Assets",
+        "responses": {
+          "200": {
+            "description": "Media list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MediaAsset"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/media/app": {
+      "post": {
+        "summary": "Create Interactive App/Addon Creative",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAppAsset"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created app creative",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAsset"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/media/{id}": {
+      "patch": {
+        "summary": "Update Creative Metadata or App Config",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMediaAsset"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated media",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAsset"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/media/upload-url": {
+      "post": {
+        "summary": "Request Presigned Upload URL",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadUrlRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Upload URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadUrlResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/media/{id}/complete": {
+      "post": {
+        "summary": "Complete Upload & Enqueue Processing",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated media",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAsset"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/media/{id}/approval": {
+      "patch": {
+        "summary": "Update Moderation Approval",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMediaApproval"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated media",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAsset"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/playlists": {
+      "get": {
+        "summary": "List Playlists",
+        "responses": {
+          "200": {
+            "description": "Playlists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Playlist"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Playlist",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlaylist"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created playlist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Playlist"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/playlists/{id}": {
+      "put": {
+        "summary": "Update Playlist",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlaylist"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated playlist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Playlist"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens": {
+      "get": {
+        "summary": "List Screens",
+        "responses": {
+          "200": {
+            "description": "Screens",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Screen"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/pair": {
+      "post": {
+        "summary": "Claim Pairing Code",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairClaimRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Paired screen",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Screen"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/provision": {
+      "post": {
+        "summary": "Pre-Provision Display (Zero-Touch URL)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvisionScreenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Provision token & URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionScreenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/{id}": {
+      "get": {
+        "summary": "Screen Detail",
+        "responses": {
+          "200": {
+            "description": "Screen detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update Screen Layout & Inventory",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateScreen"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated screen",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Screen"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/{id}/preview-manifest": {
+      "get": {
+        "summary": "Admin Read-Only Preview Manifest",
+        "responses": {
+          "200": {
+            "description": "Manifest",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceManifest"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/{id}/commands": {
+      "post": {
+        "summary": "Dispatch Remote Device Command",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendScreenCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Command",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenCommand"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/groups": {
+      "get": {
+        "summary": "List Screen Groups",
+        "responses": {
+          "200": {
+            "description": "Groups",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ScreenGroup"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Screen Group",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScreenGroup"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenGroup"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schedules": {
+      "get": {
+        "summary": "List Schedules",
+        "responses": {
+          "200": {
+            "description": "Schedules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Schedule"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Schedule",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSchedule"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Schedule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Schedule"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/pop": {
+      "get": {
+        "summary": "Query Proof-of-Play Report",
+        "responses": {
+          "200": {
+            "description": "PoP report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PopReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/device/pair/request": {
+      "post": {
+        "summary": "Request Pairing Code",
+        "responses": {
+          "201": {
+            "description": "Pairing code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/device/pair/poll": {
+      "post": {
+        "summary": "Poll Pairing Status",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairPollRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Poll result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairPollResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/device/provision/claim": {
+      "post": {
+        "summary": "Claim Pre-Provisioned Token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimProvisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimProvisionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/device/manifest": {
+      "get": {
+        "summary": "Fetch Signed Device Manifest",
+        "responses": {
+          "200": {
+            "description": "Signed manifest",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceManifest"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/device/heartbeat": {
+      "post": {
+        "summary": "Device Heartbeat",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeartbeatRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/device/pop/batch": {
+      "post": {
+        "summary": "Ingest Batched Proof-of-Play Events",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PopBatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ingested"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AppConfig": {
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "ApprovalStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "approved",
+          "rejected"
+        ]
+      },
+      "AuditLog": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "orgId": {
+            "type": "string"
+          },
+          "actorUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "actorEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "action": {
+            "type": "string"
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {},
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orgId",
+          "actorUserId",
+          "action",
+          "targetType",
+          "targetId",
+          "metadata",
+          "createdAt"
+        ]
+      },
+      "AuthUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "orgId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "editor",
+              "viewer"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "orgId",
+          "email",
+          "name",
+          "role"
+        ]
+      },
+      "ClaimProvisionRequest": {
+        "type": "object",
+        "properties": {
+          "provisionToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provisionToken"
+        ]
+      },
+      "ClaimProvisionResponse": {
+        "type": "object",
+        "properties": {
+          "screenId": {
+            "type": "string"
+          },
+          "screenName": {
+            "type": "string"
+          },
+          "deviceToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "screenId",
+          "screenName",
+          "deviceToken"
+        ]
+      },
+      "CompleteUploadRequest": {
+        "type": "object",
+        "properties": {
+          "durationMs": {
+            "type": "integer"
+          }
+        }
+      },
+      "CreateAppAsset": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "appConfig": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "title",
+          "type",
+          "appConfig"
+        ]
+      },
+      "CreatePlaylist": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "mediaAssetId": {
+                  "type": "string"
+                },
+                "durationMs": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "mediaAssetId"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "CreateSchedule": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "playlistId": {
+            "type": "string"
+          },
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "screen",
+              "group"
+            ]
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "daysOfWeek": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "endTime": {
+            "type": "string"
+          },
+          "validFrom": {
+            "type": "string",
+            "nullable": true
+          },
+          "validUntil": {
+            "type": "string",
+            "nullable": true
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "playlistId",
+          "targetType",
+          "targetId"
+        ]
+      },
+      "CreateScreenGroup": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "screenIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "CreativeConfig": {
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "DeviceManifest": {
+        "type": "object",
+        "properties": {
+          "screenId": {
+            "type": "string"
+          },
+          "screenName": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "orientation": {
+            "type": "string",
+            "enum": [
+              "landscape",
+              "portrait"
+            ]
+          },
+          "playlistId": {
+            "type": "string",
+            "nullable": true
+          },
+          "playlistName": {
+            "type": "string",
+            "nullable": true
+          },
+          "manifestVersion": {
+            "type": "integer"
+          },
+          "generatedAt": {
+            "type": "string"
+          },
+          "serverTime": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "itemId": {
+                  "type": "string"
+                },
+                "assetId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                },
+                "sizeBytes": {
+                  "type": "integer"
+                },
+                "durationMs": {
+                  "type": "integer"
+                },
+                "sortOrder": {
+                  "type": "integer"
+                },
+                "width": {
+                  "type": "integer",
+                  "nullable": true
+                },
+                "height": {
+                  "type": "integer",
+                  "nullable": true
+                },
+                "appConfig": {
+                  "type": "object",
+                  "additionalProperties": {},
+                  "nullable": true
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "itemId",
+                "assetId",
+                "title",
+                "type",
+                "mimeType",
+                "sha256",
+                "sizeBytes",
+                "durationMs",
+                "sortOrder",
+                "url"
+              ]
+            }
+          },
+          "schedules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "playlistId": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "integer"
+                },
+                "daysOfWeek": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                },
+                "startTime": {
+                  "type": "string"
+                },
+                "endTime": {
+                  "type": "string"
+                },
+                "validFrom": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "validUntil": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "playlistId",
+                "priority",
+                "daysOfWeek",
+                "startTime",
+                "endTime",
+                "validFrom",
+                "validUntil"
+              ]
+            }
+          },
+          "playlists": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer"
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "itemId": {
+                        "type": "string"
+                      },
+                      "assetId": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string"
+                      },
+                      "mimeType": {
+                        "type": "string"
+                      },
+                      "sha256": {
+                        "type": "string"
+                      },
+                      "sizeBytes": {
+                        "type": "integer"
+                      },
+                      "durationMs": {
+                        "type": "integer"
+                      },
+                      "sortOrder": {
+                        "type": "integer"
+                      },
+                      "width": {
+                        "type": "integer",
+                        "nullable": true
+                      },
+                      "height": {
+                        "type": "integer",
+                        "nullable": true
+                      },
+                      "appConfig": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "nullable": true
+                      },
+                      "url": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "itemId",
+                      "assetId",
+                      "title",
+                      "type",
+                      "mimeType",
+                      "sha256",
+                      "sizeBytes",
+                      "durationMs",
+                      "sortOrder",
+                      "url"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "version",
+                "items"
+              ]
+            }
+          },
+          "layout": {
+            "type": "object",
+            "properties": {
+              "template": {
+                "type": "string",
+                "enum": [
+                  "fullscreen",
+                  "bottom_ticker",
+                  "split_sidebar"
+                ]
+              },
+              "fitMode": {
+                "type": "string",
+                "enum": [
+                  "contain",
+                  "cover",
+                  "blur_fill"
+                ]
+              },
+              "rotationDeg": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "enum": [
+                      0
+                    ]
+                  },
+                  {
+                    "type": "number",
+                    "enum": [
+                      90
+                    ]
+                  },
+                  {
+                    "type": "number",
+                    "enum": [
+                      180
+                    ]
+                  },
+                  {
+                    "type": "number",
+                    "enum": [
+                      270
+                    ]
+                  }
+                ]
+              },
+              "transition": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "fade",
+                  "slide_left",
+                  "zoom"
+                ]
+              },
+              "syncMode": {
+                "type": "string",
+                "enum": [
+                  "independent",
+                  "clock_sync"
+                ]
+              },
+              "tickerText": {
+                "type": "string",
+                "nullable": true
+              },
+              "sidebarTitle": {
+                "type": "string",
+                "nullable": true
+              },
+              "sidebarLines": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "screenId",
+          "screenName",
+          "timezone",
+          "playlistId",
+          "playlistName",
+          "manifestVersion",
+          "generatedAt",
+          "serverTime",
+          "items"
+        ]
+      },
+      "DeviceToServerMessage": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "heartbeat"
+                ]
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "appVersion": {
+                    "type": "string"
+                  },
+                  "manifestVersion": {
+                    "type": "integer"
+                  },
+                  "currentAssetId": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "hwInfo": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                }
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "pong"
+                ]
+              },
+              "clientTime": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "ack"
+                ]
+              },
+              "commandId": {
+                "type": "string"
+              },
+              "command": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "ok",
+                  "error"
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "command",
+              "status"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "pop_batch"
+                ]
+              },
+              "events": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "playlistId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "mediaAssetId": {
+                      "type": "string"
+                    },
+                    "startedAt": {
+                      "type": "string"
+                    },
+                    "endedAt": {
+                      "type": "string"
+                    },
+                    "durationMs": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "completed",
+                        "interrupted"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "mediaAssetId",
+                    "startedAt",
+                    "endedAt",
+                    "durationMs"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "type",
+              "events"
+            ]
+          }
+        ]
+      },
+      "FitMode": {
+        "type": "string",
+        "enum": [
+          "contain",
+          "cover",
+          "blur_fill"
+        ]
+      },
+      "HeartbeatRequest": {
+        "type": "object",
+        "properties": {
+          "appVersion": {
+            "type": "string"
+          },
+          "manifestVersion": {
+            "type": "integer"
+          },
+          "currentAssetId": {
+            "type": "string",
+            "nullable": true
+          },
+          "hwInfo": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        }
+      },
+      "LayoutTemplateType": {
+        "type": "string",
+        "enum": [
+          "fullscreen",
+          "bottom_ticker",
+          "split_sidebar"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "ManifestItem": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string"
+          },
+          "assetId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "width": {
+            "type": "integer",
+            "nullable": true
+          },
+          "height": {
+            "type": "integer",
+            "nullable": true
+          },
+          "appConfig": {
+            "type": "object",
+            "additionalProperties": {},
+            "nullable": true
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId",
+          "assetId",
+          "title",
+          "type",
+          "mimeType",
+          "sha256",
+          "sizeBytes",
+          "durationMs",
+          "sortOrder",
+          "url"
+        ]
+      },
+      "ManifestPlaylist": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "itemId": {
+                  "type": "string"
+                },
+                "assetId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                },
+                "sizeBytes": {
+                  "type": "integer"
+                },
+                "durationMs": {
+                  "type": "integer"
+                },
+                "sortOrder": {
+                  "type": "integer"
+                },
+                "width": {
+                  "type": "integer",
+                  "nullable": true
+                },
+                "height": {
+                  "type": "integer",
+                  "nullable": true
+                },
+                "appConfig": {
+                  "type": "object",
+                  "additionalProperties": {},
+                  "nullable": true
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "itemId",
+                "assetId",
+                "title",
+                "type",
+                "mimeType",
+                "sha256",
+                "sizeBytes",
+                "durationMs",
+                "sortOrder",
+                "url"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "version",
+          "items"
+        ]
+      },
+      "ManifestSchedule": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "playlistId": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "daysOfWeek": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "endTime": {
+            "type": "string"
+          },
+          "validFrom": {
+            "type": "string",
+            "nullable": true
+          },
+          "validUntil": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "playlistId",
+          "priority",
+          "daysOfWeek",
+          "startTime",
+          "endTime",
+          "validFrom",
+          "validUntil"
+        ]
+      },
+      "MediaAsset": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "orgId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "uploading",
+              "processing",
+              "ready",
+              "failed"
+            ]
+          },
+          "approvalStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          },
+          "objectKey": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          },
+          "sha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "durationMs": {
+            "type": "integer",
+            "nullable": true
+          },
+          "width": {
+            "type": "integer",
+            "nullable": true
+          },
+          "height": {
+            "type": "integer",
+            "nullable": true
+          },
+          "codec": {
+            "type": "string",
+            "nullable": true
+          },
+          "appConfig": {
+            "type": "object",
+            "additionalProperties": {},
+            "nullable": true
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "previewUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orgId",
+          "title",
+          "type",
+          "mimeType",
+          "status",
+          "objectKey",
+          "sizeBytes",
+          "sha256",
+          "durationMs",
+          "createdAt"
+        ]
+      },
+      "MediaStatus": {
+        "type": "string",
+        "enum": [
+          "uploading",
+          "processing",
+          "ready",
+          "failed"
+        ]
+      },
+      "MediaType": {
+        "type": "string"
+      },
+      "Orientation": {
+        "type": "string",
+        "enum": [
+          "landscape",
+          "portrait"
+        ]
+      },
+      "PairClaimRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "activePlaylistId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ]
+      },
+      "PairPollRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "claimSecret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "claimSecret"
+        ]
+      },
+      "PairPollResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "claimed",
+              "expired"
+            ]
+          },
+          "screenId": {
+            "type": "string"
+          },
+          "screenName": {
+            "type": "string"
+          },
+          "deviceToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "PairRequestResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "claimSecret": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "claimSecret",
+          "expiresAt"
+        ]
+      },
+      "PlaylistItemInput": {
+        "type": "object",
+        "properties": {
+          "mediaAssetId": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mediaAssetId"
+        ]
+      },
+      "PlaylistItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "mediaAssetId": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "asset": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "orgId": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "uploading",
+                  "processing",
+                  "ready",
+                  "failed"
+                ]
+              },
+              "approvalStatus": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "approved",
+                  "rejected"
+                ]
+              },
+              "objectKey": {
+                "type": "string"
+              },
+              "sizeBytes": {
+                "type": "integer"
+              },
+              "sha256": {
+                "type": "string",
+                "nullable": true
+              },
+              "durationMs": {
+                "type": "integer",
+                "nullable": true
+              },
+              "width": {
+                "type": "integer",
+                "nullable": true
+              },
+              "height": {
+                "type": "integer",
+                "nullable": true
+              },
+              "codec": {
+                "type": "string",
+                "nullable": true
+              },
+              "appConfig": {
+                "type": "object",
+                "additionalProperties": {},
+                "nullable": true
+              },
+              "thumbnailUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "previewUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "orgId",
+              "title",
+              "type",
+              "mimeType",
+              "status",
+              "objectKey",
+              "sizeBytes",
+              "sha256",
+              "durationMs",
+              "createdAt"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "mediaAssetId",
+          "sortOrder",
+          "durationMs"
+        ]
+      },
+      "Playlist": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "orgId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "mediaAssetId": {
+                  "type": "string"
+                },
+                "sortOrder": {
+                  "type": "integer"
+                },
+                "durationMs": {
+                  "type": "integer"
+                },
+                "asset": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "orgId": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "uploading",
+                        "processing",
+                        "ready",
+                        "failed"
+                      ]
+                    },
+                    "approvalStatus": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "approved",
+                        "rejected"
+                      ]
+                    },
+                    "objectKey": {
+                      "type": "string"
+                    },
+                    "sizeBytes": {
+                      "type": "integer"
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "durationMs": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "width": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "height": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "codec": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "appConfig": {
+                      "type": "object",
+                      "additionalProperties": {},
+                      "nullable": true
+                    },
+                    "thumbnailUrl": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "previewUrl": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "orgId",
+                    "title",
+                    "type",
+                    "mimeType",
+                    "status",
+                    "objectKey",
+                    "sizeBytes",
+                    "sha256",
+                    "durationMs",
+                    "createdAt"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "mediaAssetId",
+                "sortOrder",
+                "durationMs"
+              ]
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orgId",
+          "name",
+          "description",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PopAssetSummary": {
+        "type": "object",
+        "properties": {
+          "mediaAssetId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "plays": {
+            "type": "integer"
+          },
+          "completedPlays": {
+            "type": "integer"
+          },
+          "totalDurationMs": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mediaAssetId",
+          "title",
+          "type",
+          "plays",
+          "completedPlays",
+          "totalDurationMs"
+        ]
+      },
+      "PopBatchRequest": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "playlistId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "mediaAssetId": {
+                  "type": "string"
+                },
+                "startedAt": {
+                  "type": "string"
+                },
+                "endedAt": {
+                  "type": "string"
+                },
+                "durationMs": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "completed",
+                    "interrupted"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "mediaAssetId",
+                "startedAt",
+                "endedAt",
+                "durationMs"
+              ]
+            }
+          }
+        },
+        "required": [
+          "events"
+        ]
+      },
+      "PopEventInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "playlistId": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaAssetId": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "endedAt": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "interrupted"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "mediaAssetId",
+          "startedAt",
+          "endedAt",
+          "durationMs"
+        ]
+      },
+      "PopEventStatus": {
+        "type": "string",
+        "enum": [
+          "completed",
+          "interrupted"
+        ]
+      },
+      "PopRecentItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "screenId": {
+            "type": "string"
+          },
+          "screenName": {
+            "type": "string"
+          },
+          "mediaAssetId": {
+            "type": "string"
+          },
+          "assetTitle": {
+            "type": "string"
+          },
+          "playlistId": {
+            "type": "string",
+            "nullable": true
+          },
+          "playlistName": {
+            "type": "string",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "endedAt": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "interrupted"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "screenId",
+          "screenName",
+          "mediaAssetId",
+          "assetTitle",
+          "playlistId",
+          "playlistName",
+          "startedAt",
+          "endedAt",
+          "durationMs",
+          "status"
+        ]
+      },
+      "PopReport": {
+        "type": "object",
+        "properties": {
+          "totalPlays": {
+            "type": "integer"
+          },
+          "completedPlays": {
+            "type": "integer"
+          },
+          "totalDurationMs": {
+            "type": "integer"
+          },
+          "activeScreens": {
+            "type": "integer"
+          },
+          "byAsset": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "mediaAssetId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "plays": {
+                  "type": "integer"
+                },
+                "completedPlays": {
+                  "type": "integer"
+                },
+                "totalDurationMs": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "mediaAssetId",
+                "title",
+                "type",
+                "plays",
+                "completedPlays",
+                "totalDurationMs"
+              ]
+            }
+          },
+          "byScreen": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "screenId": {
+                  "type": "string"
+                },
+                "screenName": {
+                  "type": "string"
+                },
+                "plays": {
+                  "type": "integer"
+                },
+                "totalDurationMs": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "screenId",
+                "screenName",
+                "plays",
+                "totalDurationMs"
+              ]
+            }
+          },
+          "recent": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "screenId": {
+                  "type": "string"
+                },
+                "screenName": {
+                  "type": "string"
+                },
+                "mediaAssetId": {
+                  "type": "string"
+                },
+                "assetTitle": {
+                  "type": "string"
+                },
+                "playlistId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "playlistName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "startedAt": {
+                  "type": "string"
+                },
+                "endedAt": {
+                  "type": "string"
+                },
+                "durationMs": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "completed",
+                    "interrupted"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "screenId",
+                "screenName",
+                "mediaAssetId",
+                "assetTitle",
+                "playlistId",
+                "playlistName",
+                "startedAt",
+                "endedAt",
+                "durationMs",
+                "status"
+              ]
+            }
+          }
+        },
+        "required": [
+          "totalPlays",
+          "completedPlays",
+          "totalDurationMs",
+          "activeScreens",
+          "byAsset",
+          "byScreen",
+          "recent"
+        ]
+      },
+      "PopScreenSummary": {
+        "type": "object",
+        "properties": {
+          "screenId": {
+            "type": "string"
+          },
+          "screenName": {
+            "type": "string"
+          },
+          "plays": {
+            "type": "integer"
+          },
+          "totalDurationMs": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "screenId",
+          "screenName",
+          "plays",
+          "totalDurationMs"
+        ]
+      },
+      "ProvisionScreenRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "activePlaylistId": {
+            "type": "string",
+            "nullable": true
+          },
+          "orientation": {
+            "type": "string",
+            "enum": [
+              "landscape",
+              "portrait"
+            ]
+          },
+          "city": {
+            "type": "string"
+          },
+          "venueType": {
+            "type": "string",
+            "enum": [
+              "retail",
+              "clinic",
+              "transit",
+              "highway",
+              "corporate",
+              "other"
+            ]
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "ProvisionScreenResponse": {
+        "type": "object",
+        "properties": {
+          "screen": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "orgId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "location": {
+                "type": "string",
+                "nullable": true
+              },
+              "timezone": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "unpaired",
+                  "online",
+                  "offline",
+                  "locked"
+                ]
+              },
+              "appVersion": {
+                "type": "string",
+                "nullable": true
+              },
+              "activePlaylistId": {
+                "type": "string",
+                "nullable": true
+              },
+              "activePlaylistName": {
+                "type": "string",
+                "nullable": true
+              },
+              "city": {
+                "type": "string",
+                "nullable": true
+              },
+              "venueType": {
+                "type": "string",
+                "enum": [
+                  "retail",
+                  "clinic",
+                  "transit",
+                  "highway",
+                  "corporate",
+                  "other"
+                ],
+                "nullable": true
+              },
+              "orientation": {
+                "type": "string",
+                "enum": [
+                  "landscape",
+                  "portrait"
+                ]
+              },
+              "slotDurationSec": {
+                "type": "integer"
+              },
+              "layout": {
+                "type": "object",
+                "properties": {
+                  "template": {
+                    "type": "string",
+                    "enum": [
+                      "fullscreen",
+                      "bottom_ticker",
+                      "split_sidebar"
+                    ]
+                  },
+                  "fitMode": {
+                    "type": "string",
+                    "enum": [
+                      "contain",
+                      "cover",
+                      "blur_fill"
+                    ]
+                  },
+                  "rotationDeg": {
+                    "oneOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          0
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          90
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          180
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          270
+                        ]
+                      }
+                    ]
+                  },
+                  "transition": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "fade",
+                      "slide_left",
+                      "zoom"
+                    ]
+                  },
+                  "syncMode": {
+                    "type": "string",
+                    "enum": [
+                      "independent",
+                      "clock_sync"
+                    ]
+                  },
+                  "tickerText": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "sidebarTitle": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "sidebarLines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "nullable": true
+              },
+              "programmaticFillUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "hwInfo": {
+                "type": "object",
+                "additionalProperties": {},
+                "nullable": true
+              },
+              "lastSeenAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "orgId",
+              "name",
+              "location",
+              "timezone",
+              "status",
+              "appVersion",
+              "activePlaylistId",
+              "hwInfo",
+              "lastSeenAt",
+              "createdAt"
+            ]
+          },
+          "provisionToken": {
+            "type": "string"
+          },
+          "provisionUrl": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "screen",
+          "provisionToken",
+          "provisionUrl",
+          "expiresAt"
+        ]
+      },
+      "RemoteCommandType": {
+        "type": "string",
+        "enum": [
+          "sync_now",
+          "take_screenshot",
+          "reboot",
+          "set_volume",
+          "cec_power"
+        ]
+      },
+      "RotationDeg": {
+        "oneOf": [
+          {
+            "type": "number",
+            "enum": [
+              0
+            ]
+          },
+          {
+            "type": "number",
+            "enum": [
+              90
+            ]
+          },
+          {
+            "type": "number",
+            "enum": [
+              180
+            ]
+          },
+          {
+            "type": "number",
+            "enum": [
+              270
+            ]
+          }
+        ]
+      },
+      "Schedule": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "orgId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "playlistId": {
+            "type": "string"
+          },
+          "playlistName": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "screen",
+              "group"
+            ]
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "targetName": {
+            "type": "string",
+            "nullable": true
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "daysOfWeek": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "endTime": {
+            "type": "string"
+          },
+          "validFrom": {
+            "type": "string",
+            "nullable": true
+          },
+          "validUntil": {
+            "type": "string",
+            "nullable": true
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orgId",
+          "name",
+          "playlistId",
+          "targetType",
+          "targetId",
+          "priority",
+          "daysOfWeek",
+          "startTime",
+          "endTime",
+          "validFrom",
+          "validUntil",
+          "enabled",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ScheduleTargetType": {
+        "type": "string",
+        "enum": [
+          "screen",
+          "group"
+        ]
+      },
+      "ScreenCommand": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "screenId": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string",
+            "enum": [
+              "sync_now",
+              "take_screenshot",
+              "reboot",
+              "set_volume",
+              "cec_power"
+            ]
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": {},
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "acked",
+              "failed"
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "ackedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "screenId",
+          "command",
+          "payload",
+          "status",
+          "detail",
+          "createdAt",
+          "ackedAt"
+        ]
+      },
+      "ScreenDetailResponse": {
+        "type": "object",
+        "properties": {
+          "screen": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "orgId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "location": {
+                "type": "string",
+                "nullable": true
+              },
+              "timezone": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "unpaired",
+                  "online",
+                  "offline",
+                  "locked"
+                ]
+              },
+              "appVersion": {
+                "type": "string",
+                "nullable": true
+              },
+              "activePlaylistId": {
+                "type": "string",
+                "nullable": true
+              },
+              "activePlaylistName": {
+                "type": "string",
+                "nullable": true
+              },
+              "city": {
+                "type": "string",
+                "nullable": true
+              },
+              "venueType": {
+                "type": "string",
+                "enum": [
+                  "retail",
+                  "clinic",
+                  "transit",
+                  "highway",
+                  "corporate",
+                  "other"
+                ],
+                "nullable": true
+              },
+              "orientation": {
+                "type": "string",
+                "enum": [
+                  "landscape",
+                  "portrait"
+                ]
+              },
+              "slotDurationSec": {
+                "type": "integer"
+              },
+              "layout": {
+                "type": "object",
+                "properties": {
+                  "template": {
+                    "type": "string",
+                    "enum": [
+                      "fullscreen",
+                      "bottom_ticker",
+                      "split_sidebar"
+                    ]
+                  },
+                  "fitMode": {
+                    "type": "string",
+                    "enum": [
+                      "contain",
+                      "cover",
+                      "blur_fill"
+                    ]
+                  },
+                  "rotationDeg": {
+                    "oneOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          0
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          90
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          180
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          270
+                        ]
+                      }
+                    ]
+                  },
+                  "transition": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "fade",
+                      "slide_left",
+                      "zoom"
+                    ]
+                  },
+                  "syncMode": {
+                    "type": "string",
+                    "enum": [
+                      "independent",
+                      "clock_sync"
+                    ]
+                  },
+                  "tickerText": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "sidebarTitle": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "sidebarLines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "nullable": true
+              },
+              "programmaticFillUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "hwInfo": {
+                "type": "object",
+                "additionalProperties": {},
+                "nullable": true
+              },
+              "lastSeenAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "orgId",
+              "name",
+              "location",
+              "timezone",
+              "status",
+              "appVersion",
+              "activePlaylistId",
+              "hwInfo",
+              "lastSeenAt",
+              "createdAt"
+            ]
+          },
+          "latestScreenshot": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "screenId": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "capturedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "screenId",
+              "url",
+              "capturedAt"
+            ],
+            "nullable": true
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "screenId": {
+                  "type": "string"
+                },
+                "command": {
+                  "type": "string",
+                  "enum": [
+                    "sync_now",
+                    "take_screenshot",
+                    "reboot",
+                    "set_volume",
+                    "cec_power"
+                  ]
+                },
+                "payload": {
+                  "type": "object",
+                  "additionalProperties": {},
+                  "nullable": true
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "queued",
+                    "acked",
+                    "failed"
+                  ]
+                },
+                "detail": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "ackedAt": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "screenId",
+                "command",
+                "payload",
+                "status",
+                "detail",
+                "createdAt",
+                "ackedAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "screen",
+          "latestScreenshot",
+          "commands"
+        ]
+      },
+      "ScreenGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "orgId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "screenIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orgId",
+          "name",
+          "description",
+          "createdAt"
+        ]
+      },
+      "ScreenLayoutConfig": {
+        "type": "object",
+        "properties": {
+          "template": {
+            "type": "string",
+            "enum": [
+              "fullscreen",
+              "bottom_ticker",
+              "split_sidebar"
+            ]
+          },
+          "fitMode": {
+            "type": "string",
+            "enum": [
+              "contain",
+              "cover",
+              "blur_fill"
+            ]
+          },
+          "rotationDeg": {
+            "oneOf": [
+              {
+                "type": "number",
+                "enum": [
+                  0
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  90
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  180
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  270
+                ]
+              }
+            ]
+          },
+          "transition": {
+            "type": "string",
+            "enum": [
+              "none",
+              "fade",
+              "slide_left",
+              "zoom"
+            ]
+          },
+          "syncMode": {
+            "type": "string",
+            "enum": [
+              "independent",
+              "clock_sync"
+            ]
+          },
+          "tickerText": {
+            "type": "string",
+            "nullable": true
+          },
+          "sidebarTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "sidebarLines": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Screen": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "orgId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unpaired",
+              "online",
+              "offline",
+              "locked"
+            ]
+          },
+          "appVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "activePlaylistId": {
+            "type": "string",
+            "nullable": true
+          },
+          "activePlaylistName": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "venueType": {
+            "type": "string",
+            "enum": [
+              "retail",
+              "clinic",
+              "transit",
+              "highway",
+              "corporate",
+              "other"
+            ],
+            "nullable": true
+          },
+          "orientation": {
+            "type": "string",
+            "enum": [
+              "landscape",
+              "portrait"
+            ]
+          },
+          "slotDurationSec": {
+            "type": "integer"
+          },
+          "layout": {
+            "type": "object",
+            "properties": {
+              "template": {
+                "type": "string",
+                "enum": [
+                  "fullscreen",
+                  "bottom_ticker",
+                  "split_sidebar"
+                ]
+              },
+              "fitMode": {
+                "type": "string",
+                "enum": [
+                  "contain",
+                  "cover",
+                  "blur_fill"
+                ]
+              },
+              "rotationDeg": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "enum": [
+                      0
+                    ]
+                  },
+                  {
+                    "type": "number",
+                    "enum": [
+                      90
+                    ]
+                  },
+                  {
+                    "type": "number",
+                    "enum": [
+                      180
+                    ]
+                  },
+                  {
+                    "type": "number",
+                    "enum": [
+                      270
+                    ]
+                  }
+                ]
+              },
+              "transition": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "fade",
+                  "slide_left",
+                  "zoom"
+                ]
+              },
+              "syncMode": {
+                "type": "string",
+                "enum": [
+                  "independent",
+                  "clock_sync"
+                ]
+              },
+              "tickerText": {
+                "type": "string",
+                "nullable": true
+              },
+              "sidebarTitle": {
+                "type": "string",
+                "nullable": true
+              },
+              "sidebarLines": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "nullable": true
+          },
+          "programmaticFillUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "hwInfo": {
+            "type": "object",
+            "additionalProperties": {},
+            "nullable": true
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orgId",
+          "name",
+          "location",
+          "timezone",
+          "status",
+          "appVersion",
+          "activePlaylistId",
+          "hwInfo",
+          "lastSeenAt",
+          "createdAt"
+        ]
+      },
+      "ScreenScreenshot": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "screenId": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "capturedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "screenId",
+          "url",
+          "capturedAt"
+        ]
+      },
+      "ScreenStatus": {
+        "type": "string",
+        "enum": [
+          "unpaired",
+          "online",
+          "offline",
+          "locked"
+        ]
+      },
+      "SendScreenCommand": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": [
+              "sync_now",
+              "take_screenshot",
+              "reboot",
+              "set_volume",
+              "cec_power"
+            ]
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "ServerToDeviceMessage": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "sync_now"
+                ]
+              },
+              "commandId": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "serverTime": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "serverTime"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "ping"
+                ]
+              },
+              "serverTime": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "serverTime"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "revoke"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "serverTime": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "serverTime"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "take_screenshot"
+                ]
+              },
+              "commandId": {
+                "type": "string"
+              },
+              "uploadUrl": {
+                "type": "string"
+              },
+              "objectKey": {
+                "type": "string"
+              },
+              "serverTime": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "commandId",
+              "uploadUrl",
+              "objectKey",
+              "serverTime"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "reboot"
+                ]
+              },
+              "commandId": {
+                "type": "string"
+              },
+              "serverTime": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "commandId",
+              "serverTime"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "set_volume"
+                ]
+              },
+              "commandId": {
+                "type": "string"
+              },
+              "level": {
+                "type": "integer"
+              },
+              "serverTime": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "commandId",
+              "level",
+              "serverTime"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "cec_power"
+                ]
+              },
+              "commandId": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "on",
+                  "standby"
+                ]
+              },
+              "serverTime": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "commandId",
+              "state",
+              "serverTime"
+            ]
+          }
+        ]
+      },
+      "SyncMode": {
+        "type": "string",
+        "enum": [
+          "independent",
+          "clock_sync"
+        ]
+      },
+      "TransitionType": {
+        "type": "string",
+        "enum": [
+          "none",
+          "fade",
+          "slide_left",
+          "zoom"
+        ]
+      },
+      "UpdateMediaApproval": {
+        "type": "object",
+        "properties": {
+          "approvalStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          }
+        },
+        "required": [
+          "approvalStatus"
+        ]
+      },
+      "UpdateMediaAsset": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "appConfig": {
+            "type": "object",
+            "additionalProperties": {},
+            "nullable": true
+          }
+        }
+      },
+      "UpdatePlaylist": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "mediaAssetId": {
+                  "type": "string"
+                },
+                "durationMs": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "mediaAssetId"
+              ]
+            }
+          }
+        }
+      },
+      "UpdateSchedule": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "playlistId": {
+            "type": "string"
+          },
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "screen",
+              "group"
+            ]
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "daysOfWeek": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "endTime": {
+            "type": "string"
+          },
+          "validFrom": {
+            "type": "string",
+            "nullable": true
+          },
+          "validUntil": {
+            "type": "string",
+            "nullable": true
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateScreenGroup": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "screenIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "UpdateScreen": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "activePlaylistId": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "venueType": {
+            "type": "string",
+            "enum": [
+              "retail",
+              "clinic",
+              "transit",
+              "highway",
+              "corporate",
+              "other"
+            ],
+            "nullable": true
+          },
+          "orientation": {
+            "type": "string",
+            "enum": [
+              "landscape",
+              "portrait"
+            ]
+          },
+          "slotDurationSec": {
+            "type": "integer"
+          },
+          "layout": {
+            "type": "object",
+            "properties": {
+              "template": {
+                "type": "string",
+                "enum": [
+                  "fullscreen",
+                  "bottom_ticker",
+                  "split_sidebar"
+                ]
+              },
+              "fitMode": {
+                "type": "string",
+                "enum": [
+                  "contain",
+                  "cover",
+                  "blur_fill"
+                ]
+              },
+              "rotationDeg": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "enum": [
+                      0
+                    ]
+                  },
+                  {
+                    "type": "number",
+                    "enum": [
+                      90
+                    ]
+                  },
+                  {
+                    "type": "number",
+                    "enum": [
+                      180
+                    ]
+                  },
+                  {
+                    "type": "number",
+                    "enum": [
+                      270
+                    ]
+                  }
+                ]
+              },
+              "transition": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "fade",
+                  "slide_left",
+                  "zoom"
+                ]
+              },
+              "syncMode": {
+                "type": "string",
+                "enum": [
+                  "independent",
+                  "clock_sync"
+                ]
+              },
+              "tickerText": {
+                "type": "string",
+                "nullable": true
+              },
+              "sidebarTitle": {
+                "type": "string",
+                "nullable": true
+              },
+              "sidebarLines": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "nullable": true
+          },
+          "programmaticFillUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "UploadUrlRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "title",
+          "filename",
+          "mimeType",
+          "sizeBytes"
+        ]
+      },
+      "UploadUrlResponse": {
+        "type": "object",
+        "properties": {
+          "asset": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "orgId": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "uploading",
+                  "processing",
+                  "ready",
+                  "failed"
+                ]
+              },
+              "approvalStatus": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "approved",
+                  "rejected"
+                ]
+              },
+              "objectKey": {
+                "type": "string"
+              },
+              "sizeBytes": {
+                "type": "integer"
+              },
+              "sha256": {
+                "type": "string",
+                "nullable": true
+              },
+              "durationMs": {
+                "type": "integer",
+                "nullable": true
+              },
+              "width": {
+                "type": "integer",
+                "nullable": true
+              },
+              "height": {
+                "type": "integer",
+                "nullable": true
+              },
+              "codec": {
+                "type": "string",
+                "nullable": true
+              },
+              "appConfig": {
+                "type": "object",
+                "additionalProperties": {},
+                "nullable": true
+              },
+              "thumbnailUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "previewUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "orgId",
+              "title",
+              "type",
+              "mimeType",
+              "status",
+              "objectKey",
+              "sizeBytes",
+              "sha256",
+              "durationMs",
+              "createdAt"
+            ]
+          },
+          "uploadUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset",
+          "uploadUrl"
+        ]
+      },
+      "VenueType": {
+        "type": "string",
+        "enum": [
+          "retail",
+          "clinic",
+          "transit",
+          "highway",
+          "corporate",
+          "other"
+        ]
+      }
+    }
+  }
+}

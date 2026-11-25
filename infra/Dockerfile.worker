@@ -1,0 +1,27 @@
+FROM node:22-alpine AS builder
+WORKDIR /app
+
+RUN corepack enable
+
+COPY package.json pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/worker-media/package.json apps/worker-media/
+
+RUN pnpm install --no-frozen-lockfile
+
+COPY apps/worker-media apps/worker-media
+
+RUN pnpm --filter @signage/worker-media build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+RUN apk add --no-cache ffmpeg
+
+COPY --from=builder /app/package.json /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/worker-media/package.json ./apps/worker-media/
+COPY --from=builder /app/apps/worker-media/node_modules ./apps/worker-media/node_modules
+COPY --from=builder /app/apps/worker-media/dist ./apps/worker-media/dist
+
+CMD ["node", "apps/worker-media/dist/index.js"]

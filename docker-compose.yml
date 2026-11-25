@@ -1,0 +1,100 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-signage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-signage_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-signage}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-signage} -d ${POSTGRES_DB:-signage}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  storage:
+    image: rustfs/rustfs:latest
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-signageadmin}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-signageadmin_secret}
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: ":9000"
+    volumes:
+      - storage_data:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      storage:
+        condition: service_started
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://${POSTGRES_USER:-signage}:${POSTGRES_PASSWORD:-signage_dev_password}@postgres:5432/${POSTGRES_DB:-signage}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      S3_INTERNAL_ENDPOINT: http://storage:9000
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-signage-media}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-signageadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-signageadmin_secret}
+      JWT_SECRET: ${JWT_SECRET:-dev-change-this-to-a-long-random-secret-string}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@signage.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin12345}
+      MANIFEST_PRIVATE_KEY_B64: ${MANIFEST_PRIVATE_KEY_B64:-}
+      MANIFEST_PUBLIC_KEY_B64: ${MANIFEST_PUBLIC_KEY_B64:-}
+
+  worker-media:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      storage:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-signage}:${POSTGRES_PASSWORD:-signage_dev_password}@postgres:5432/${POSTGRES_DB:-signage}
+      S3_INTERNAL_ENDPOINT: http://storage:9000
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-signage-media}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-signageadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-signageadmin_secret}
+
+  caddy:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.web
+    restart: unless-stopped
+    depends_on:
+      - api
+      - storage
+    environment:
+      S3_BUCKET: ${S3_BUCKET:-signage-media}
+    ports:
+      - "${PORT:-8080}:80"
+    volumes:
+      - caddy_data:/data
+
+  android-builder:
+    profiles: ["android"]
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.android-builder
+    volumes:
+      - .:/workspace
+      - gradle_cache:/root/.gradle
+    working_dir: /workspace/apps/player-android
+
+volumes:
+  pg_data:
+  storage_data:
+  caddy_data:
+  gradle_cache:

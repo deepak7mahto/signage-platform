@@ -1,0 +1,2 @@
+-keep class com.signageos.player.data.** { *; }
+-keepattributes *Annotation*

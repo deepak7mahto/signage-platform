@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SignageOS Player</string>
+    <string name="device_admin_desc">Enables SignageOS Kiosk Lock Task Mode, silent OTA updates, and remote reboot.</string>
+</resources>

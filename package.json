@@ -1,0 +1,14 @@
+{
+  "name": "signage-platform",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.13.1",
+  "scripts": {
+    "build": "pnpm --filter @signage/shared build && pnpm --filter @signage/api build && pnpm --filter @signage/worker-media build && pnpm --filter @signage/cms-web build && pnpm --filter @signage/player-web-sim build",
+    "typecheck": "pnpm --filter @signage/shared build && pnpm --filter @signage/api typecheck && pnpm --filter @signage/worker-media typecheck && pnpm --filter @signage/cms-web typecheck && pnpm --filter @signage/player-web-sim typecheck",
+    "generate:openapi": "pnpm --filter @signage/shared build && node scripts/generate-openapi.mjs",
+    "check:rules": "node scripts/check-code-rules.mjs",
+    "check": "pnpm check:rules && pnpm typecheck && pnpm generate:openapi -- --check",
+    "clean": "pnpm -r exec rm -rf dist"
+  }
+}

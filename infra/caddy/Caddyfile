@@ -1,0 +1,29 @@
+:80 {
+  @storage path /{$S3_BUCKET:signage-media}/*
+  handle @storage {
+    reverse_proxy storage:9000 {
+      header_up Host {http.request.hostport}
+    }
+  }
+
+  handle /api/* {
+    reverse_proxy api:3000
+  }
+
+  handle /ws/* {
+    reverse_proxy api:3000
+  }
+
+  redir /sim /sim/ permanent
+  handle_path /sim/* {
+    root * /srv/sim
+    try_files {path} /index.html
+    file_server
+  }
+
+  handle {
+    root * /srv/cms
+    try_files {path} /index.html
+    file_server
+  }
+}

@@ -1,0 +1,24 @@
+FROM node:22-alpine AS builder
+WORKDIR /app
+
+RUN corepack enable
+
+COPY package.json pnpm-workspace.yaml tsconfig.base.json ./
+COPY packages/shared/package.json packages/shared/
+COPY apps/cms-web/package.json apps/cms-web/
+COPY apps/player-web-sim/package.json apps/player-web-sim/
+
+RUN pnpm install --no-frozen-lockfile
+
+COPY packages/shared packages/shared
+COPY apps/cms-web apps/cms-web
+COPY apps/player-web-sim apps/player-web-sim
+
+RUN pnpm --filter @signage/shared build \
+  && pnpm --filter @signage/cms-web build \
+  && pnpm --filter @signage/player-web-sim build
+
+FROM caddy:2-alpine
+COPY infra/caddy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=builder /app/apps/cms-web/dist /srv/cms
+COPY --from=builder /app/apps/player-web-sim/dist /srv/sim

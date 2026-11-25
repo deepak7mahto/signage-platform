@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:keepScreenOn="true">
+
+    <!-- 4K Hardware Media3 ExoPlayer Surface -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/playerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        app:resize_mode="fit"
+        app:use_controller="false" />
+
+    <!-- Image Asset Surface -->
+    <ImageView
+        android:id="@+id/imageView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="Signage media"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+
+    <!-- HDMI-CEC Standby Overlay -->
+    <LinearLayout
+        android:id="@+id/standbyOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TV Standby (HDMI-CEC)"
+            android:textColor="#E4E4E7"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Display asleep via remote command"
+            android:textColor="#A1A1AA"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <!-- Pairing View (Unpaired) -->
+    <LinearLayout
+        android:id="@+id/pairingContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#09090B"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SignageOS 4K Android Player"
+            android:textColor="#FAFAFA"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Open CMS → Screens → Pair Screen and enter this 6-digit code"
+            android:textColor="#A1A1AA"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/pairingCodeText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:background="#18181B"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.25"
+            android:paddingHorizontal="36dp"
+            android:paddingVertical="18dp"
+            android:text="------"
+            android:textColor="#FAFAFA"
+            android:textSize="54sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="460dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/serverUrlInput"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:background="#18181B"
+                android:hint="http://192.168.1.50:8080"
+                android:inputType="textUri"
+                android:paddingHorizontal="12dp"
+                android:singleLine="true"
+                android:textColor="#FAFAFA"
+                android:textColorHint="#71717A"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/connectServerBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginStart="8dp"
+                android:text="Connect" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/pairingStatusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Connecting to server..."
+            android:textColor="#A1A1AA"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <!-- Hidden Diagnostics HUD (Tap top-left or press MENU/INFO key) -->
+    <LinearLayout
+        android:id="@+id/hudOverlay"
+        android:layout_width="320dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="20dp"
+        android:background="#E618181B"
+        android:orientation="vertical"
+        android:padding="14dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/hudTitleText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SignageOS Diagnostics"
+            android:textColor="#FAFAFA"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/hudDetailsText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:fontFamily="monospace"
+            android:textColor="#D4D4D8"
+            android:textSize="11sp" />
+
+        <Button
+            android:id="@+id/unpairBtn"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:layout_marginTop="10dp"
+            android:text="Unpair Display"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+</FrameLayout>
