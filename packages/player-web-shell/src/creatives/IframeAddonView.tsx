@@ -1,8 +1,9 @@
 import { Globe, Loader2, WifiOff, Youtube } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { extractYouTubeVideoId, type ManifestItem } from '@signage/shared';
+import { extractYouTubeVideoId } from '@signage/shared/creatives';
+import type { ManifestItem } from '@signage/shared/contracts';
 
-interface IframeAddonViewProps {
+export interface IframeAddonViewProps {
   item: ManifestItem;
   isOnline: boolean;
   isMuted: boolean;
@@ -72,8 +73,13 @@ export function IframeAddonView({ item, isOnline, isMuted }: IframeAddonViewProp
         key={`${item.itemId}-${isMuted ? 'm' : 'u'}`}
         src={iframeSrc}
         title={item.title}
+        sandbox={
+          isYoutube
+            ? 'allow-scripts allow-same-origin allow-presentation'
+            : 'allow-scripts'
+        }
         allow="autoplay; encrypted-media; fullscreen"
-        referrerPolicy="no-referrer-when-downgrade"
+        referrerPolicy="no-referrer"
         onLoad={() => setLoaded(true)}
         className="h-full w-full border-0 bg-white"
       />

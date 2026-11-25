@@ -1,5 +1,5 @@
 import { Sparkles } from 'lucide-react';
-import type { ManifestItem } from '@signage/shared';
+import type { ManifestItem } from '@signage/shared/contracts';
 
 const ACCENT_MAP: Record<string, { bg: string; badge: string; border: string }> = {
   amber: {
@@ -24,7 +24,7 @@ const ACCENT_MAP: Record<string, { bg: string; badge: string; border: string }> 
   },
 };
 
-interface HtmlCardViewProps {
+export interface HtmlCardViewProps {
   item: ManifestItem;
   compact: boolean;
 }

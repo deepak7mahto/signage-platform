@@ -1,6 +1,6 @@
 import { Cloud, CloudRain, CloudSun, Droplets, Loader2, Sun, WifiOff, Wind } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { ManifestItem } from '@signage/shared';
+import type { ManifestItem } from '@signage/shared/contracts';
 
 interface WeatherSnapshot {
   cityLabel: string;
@@ -28,7 +28,7 @@ function WeatherIcon({ code, className }: { code: number; className?: string }) 
   return <Cloud className={className} />;
 }
 
-interface WeatherWidgetProps {
+export interface WeatherWidgetProps {
   item: ManifestItem;
   isOnline: boolean;
   compact: boolean;
@@ -96,7 +96,7 @@ export function WeatherWidget({ item, isOnline, compact }: WeatherWidgetProps) {
         setSnapshot(next);
         localStorage.setItem(cacheKey, JSON.stringify(next));
       } catch {
-        // Keep existing cached snapshot or show fallback card
+        // Keep cached snapshot
       } finally {
         if (!cancelled) setLoading(false);
       }

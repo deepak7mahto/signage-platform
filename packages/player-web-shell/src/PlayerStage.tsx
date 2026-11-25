@@ -1,17 +1,18 @@
-import { Monitor, Moon } from 'lucide-react';
+import { AlertTriangle, Monitor, Moon } from 'lucide-react';
 import type { RefObject } from 'react';
-import {
-  isBinaryMediaType,
-  type FitMode,
-  type ManifestItem,
-  type RotationDeg,
-  type ScreenLayoutConfig,
-  type TransitionType,
-} from '@signage/shared';
-import { renderCreativeAddon } from './creatives/registry';
+import { isBinaryMediaType } from '@signage/shared/creatives';
+import type {
+  FitMode,
+  ManifestItem,
+  RotationDeg,
+  ScreenLayoutConfig,
+  TransitionType,
+} from '@signage/shared/contracts';
+import { renderCreativeAddon } from './creatives/registry.js';
 
-interface PlayerStageProps {
+export interface PlayerStageProps {
   standby: boolean;
+  safeMode?: boolean;
   compact: boolean;
   isOnline: boolean;
   isPortrait: boolean;
@@ -29,11 +30,12 @@ interface PlayerStageProps {
   isMuted: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   imgRef: RefObject<HTMLImageElement | null>;
-  onRecordAndAdvance: (status: 'completed' | 'interrupted') => void;
+  onRecordAndAdvance: (status: 'completed' | 'interrupted', crashedAssetId?: string) => void;
 }
 
 export function PlayerStage({
   standby,
+  safeMode = false,
   compact,
   isOnline,
   isPortrait,
@@ -72,6 +74,7 @@ export function PlayerStage({
           key={currentItem.itemId}
           src={currentBlobUrl}
           alt={currentItem.title}
+          onError={() => onRecordAndAdvance('interrupted', currentItem.assetId)}
           className={`relative z-10 h-full w-full ${fitClass}`}
         />
       );
@@ -85,7 +88,7 @@ export function PlayerStage({
         muted={isMuted}
         playsInline
         onEnded={() => onRecordAndAdvance('completed')}
-        onError={() => onRecordAndAdvance('interrupted')}
+        onError={() => onRecordAndAdvance('interrupted', currentItem.assetId)}
         className={`relative z-10 h-full w-full ${fitClass}`}
       />
     );
@@ -96,6 +99,14 @@ export function PlayerStage({
       <Moon className="mb-3 h-10 w-10" />
       <div className="text-sm font-medium text-foreground">TV Standby (HDMI-CEC)</div>
       <div className="mt-1 text-xs">Display asleep via remote power command</div>
+    </div>
+  ) : safeMode ? (
+    <div className="flex h-full w-full flex-col items-center justify-center bg-zinc-950 p-6 text-center text-muted-foreground">
+      <AlertTriangle className="mb-3 h-10 w-10 text-amber-400" />
+      <div className="text-base font-semibold text-foreground">{screenName} — Safe Mode</div>
+      <div className="mt-1 text-xs">
+        Watchdog locked playback after repeated failures. Waiting for manifest update or remote recovery.
+      </div>
     </div>
   ) : currentItem && !isBinaryMediaType(currentItem.type) ? (
     <div
@@ -155,7 +166,7 @@ export function PlayerStage({
   );
 
   const stageContent =
-    !standby && layout.template === 'split_sidebar' ? (
+    !standby && !safeMode && layout.template === 'split_sidebar' ? (
       isPortrait ? (
         <div className="flex h-full w-full flex-col" data-layout-orientation="portrait">
           <div className="min-h-0 flex-1 bg-black">{mediaStage}</div>
@@ -213,7 +224,7 @@ export function PlayerStage({
           </aside>
         </div>
       )
-    ) : !standby && layout.template === 'bottom_ticker' ? (
+    ) : !standby && !safeMode && layout.template === 'bottom_ticker' ? (
       <div className="flex h-full w-full flex-col" data-layout-orientation={isPortrait ? 'portrait' : 'landscape'}>
         <div className="min-h-0 flex-1 bg-black">{mediaStage}</div>
         <footer className={`flex shrink-0 items-center justify-between gap-4 border-t border-border bg-card text-card-foreground ${compact ? 'px-3 py-1.5' : 'px-6 py-3'}`}>

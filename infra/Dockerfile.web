@@ -5,16 +5,22 @@ RUN corepack enable
 
 COPY package.json pnpm-workspace.yaml tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
+COPY packages/player-core/package.json packages/player-core/
+COPY packages/player-web-shell/package.json packages/player-web-shell/
 COPY apps/cms-web/package.json apps/cms-web/
 COPY apps/player-web-sim/package.json apps/player-web-sim/
 
 RUN pnpm install --no-frozen-lockfile
 
 COPY packages/shared packages/shared
+COPY packages/player-core packages/player-core
+COPY packages/player-web-shell packages/player-web-shell
 COPY apps/cms-web apps/cms-web
 COPY apps/player-web-sim apps/player-web-sim
 
 RUN pnpm --filter @signage/shared build \
+  && pnpm --filter @signage/player-core build \
+  && pnpm --filter @signage/player-web-shell build \
   && pnpm --filter @signage/cms-web build \
   && pnpm --filter @signage/player-web-sim build
 

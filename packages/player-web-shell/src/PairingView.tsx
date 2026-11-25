@@ -1,8 +1,8 @@
 import { KeyRound, Monitor } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import type { PairRequestResponse } from '@signage/shared';
+import type { PairRequestResponse } from '@signage/shared/contracts';
 
-interface PairingViewProps {
+export interface PairingViewProps {
   slot: string;
   compact: boolean;
   claimingProvision: boolean;

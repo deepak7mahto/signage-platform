@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { resolveActiveManifestPlaylist, type ManifestItem } from '@signage/shared';
-import { DiagnosticsHud } from './components/DiagnosticsHud';
-import { PairingView } from './components/PairingView';
-import { PlayerStage } from './components/PlayerStage';
+import { PlaybackWatchdog, resolveActiveManifestPlaylist } from '@signage/player-core';
+import { DiagnosticsHud, PairingView, PlayerStage } from '@signage/player-web-shell';
+import type { ManifestItem, PlaybackState } from '@signage/shared/contracts';
 import { useClockSync } from './hooks/useClockSync';
 import { useDeviceSocket } from './hooks/useDeviceSocket';
 import { useManifestSync } from './hooks/useManifestSync';
@@ -23,6 +22,9 @@ export function App() {
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [scheduleTick, setScheduleTick] = useState(0);
+  const [quarantineTick, setQuarantineTick] = useState(0);
+  const [safeMode, setSafeMode] = useState(false);
+  const [stalled, setStalled] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [standby, setStandby] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -33,7 +35,12 @@ export function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const itemStartedAtRef = useRef<number>(Date.now());
+  const lastFrameAdvanceAtRef = useRef<string>(new Date().toISOString());
   const revokeUrlsRef = useRef<() => void>(() => {});
+  const watchdogRef = useRef<PlaybackWatchdog | null>(null);
+  if (!watchdogRef.current) {
+    watchdogRef.current = new PlaybackWatchdog();
+  }
 
   const { popQueuedCount, setPopQueuedCount, recordPlay } = usePopSync(
     creds,
@@ -62,6 +69,25 @@ export function App() {
     revokeAllObjectUrls,
   } = useManifestSync(creds, slot, previewScreenId, unpair);
   revokeUrlsRef.current = revokeAllObjectUrls;
+
+  useEffect(() => {
+    if (!manifest) return;
+    if (watchdogRef.current?.onManifestVersion(manifest.manifestVersion)) {
+      setQuarantineTick((t) => t + 1);
+    }
+  }, [manifest]);
+
+  const clearQuarantine = useCallback((assetId?: string) => {
+    watchdogRef.current?.clearQuarantine(assetId);
+    setQuarantineTick((t) => t + 1);
+  }, []);
+
+  const exitSafeMode = useCallback(() => {
+    watchdogRef.current?.exitSafeMode();
+    watchdogRef.current?.clearQuarantine();
+    setSafeMode(false);
+    setQuarantineTick((t) => t + 1);
+  }, []);
 
   useEffect(() => {
     const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
@@ -108,23 +134,6 @@ export function App() {
     return () => clearInterval(timer);
   }, []);
 
-  const { wsConnected, setWsConnected } = useDeviceSocket({
-    creds,
-    previewScreenId,
-    manifestVersion: manifest?.manifestVersion ?? 0,
-    standby,
-    videoRef,
-    imgRef,
-    onSyncManifest: syncManifest,
-    onUnpair: unpair,
-    onSetStandby: setStandby,
-    onSetMuted: setIsMuted,
-  });
-
-  useEffect(() => {
-    if (!isOnline) setWsConnected(false);
-  }, [isOnline, setWsConnected]);
-
   const activeResolved = useMemo(() => {
     if (!manifest) return { playlistId: null, playlistName: null, scheduleName: null, items: [] as ManifestItem[] };
     return resolveActiveManifestPlaylist(manifest, Date.now() + clockOffsetMs);
@@ -133,12 +142,47 @@ export function App() {
 
   useEffect(() => setActiveIndex(0), [activeResolved.playlistId, activeResolved.scheduleName]);
 
-  const playableItems = activeResolved.items.filter((item) => Boolean(playableUrls[item.assetId]));
+  const playableItems = useMemo(() => {
+    const wd = watchdogRef.current;
+    return activeResolved.items.filter(
+      (item) => Boolean(playableUrls[item.assetId]) && !(wd?.isQuarantined(item.assetId) ?? false),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeResolved.items, playableUrls, quarantineTick]);
+
   const safeIndex = playableItems.length > 0 ? activeIndex % playableItems.length : 0;
   const currentItem = playableItems[safeIndex] ?? null;
 
+  const playbackState: PlaybackState =
+    watchdogRef.current?.getPlaybackState(Boolean(currentItem) && !standby, stalled) ?? 'idle';
+
+  const { wsConnected, setWsConnected } = useDeviceSocket({
+    creds,
+    slot,
+    previewScreenId,
+    manifestVersion: manifest?.manifestVersion ?? 0,
+    playbackState,
+    lastFrameAdvanceAt: lastFrameAdvanceAtRef.current,
+    standby,
+    videoRef,
+    imgRef,
+    onSyncManifest: syncManifest,
+    onUnpair: unpair,
+    onSetStandby: setStandby,
+    onSetMuted: setIsMuted,
+    onClearQuarantine: clearQuarantine,
+    onExitSafeMode: exitSafeMode,
+  });
+
+  useEffect(() => {
+    if (!isOnline) setWsConnected(false);
+  }, [isOnline, setWsConnected]);
+
   useEffect(() => {
     itemStartedAtRef.current = Date.now() + clockOffsetMs;
+    lastFrameAdvanceAtRef.current = new Date().toISOString();
+    watchdogRef.current?.resetProgress();
+    setStalled(false);
   }, [currentItem?.itemId, activeIndex, clockOffsetMs]);
 
   useEffect(() => {
@@ -146,12 +190,16 @@ export function App() {
   }, [isMuted, activeIndex]);
 
   const recordAndAdvance = useCallback(
-    (status: 'completed' | 'interrupted' = 'completed') => {
+    (status: 'completed' | 'interrupted' = 'completed', crashedAssetId?: string) => {
       if (currentItem && !standby) {
         const endedMs = Date.now() + clockOffsetMs;
         recordPlay(activeResolved.playlistId, currentItem.assetId, Math.min(itemStartedAtRef.current, endedMs), endedMs, status);
       }
+      if (crashedAssetId && watchdogRef.current?.recordCrash(crashedAssetId)) {
+        setQuarantineTick((t) => t + 1);
+      }
       itemStartedAtRef.current = Date.now() + clockOffsetMs;
+      lastFrameAdvanceAtRef.current = new Date().toISOString();
       setActiveIndex((idx) => (playableItems.length > 0 ? (idx + 1) % playableItems.length : 0));
     },
     [activeResolved.playlistId, clockOffsetMs, currentItem, playableItems.length, recordPlay, standby],
@@ -173,28 +221,27 @@ export function App() {
   useClockSync({ syncMode, playableItems, safeIndex, standby, clockOffsetMs, videoRef, onSelectIndex: setActiveIndex });
 
   useEffect(() => {
-    if (!currentItem || standby || syncMode === 'clock_sync' || currentItem.type === 'video') return;
+    if (!currentItem || standby || safeMode || syncMode === 'clock_sync' || currentItem.type === 'video') return;
     const timer = window.setTimeout(() => recordAndAdvance('completed'), currentItem.durationMs);
     return () => clearTimeout(timer);
-  }, [currentItem, recordAndAdvance, standby, syncMode]);
+  }, [currentItem, recordAndAdvance, safeMode, standby, syncMode]);
 
   useEffect(() => {
-    if (!currentItem || standby || currentItem.type !== 'video') return;
-    let lastTime = -1;
-    let frozenTicks = 0;
+    if (!currentItem || standby || safeMode || currentItem.type !== 'video') return;
     const watchdog = window.setInterval(() => {
       const video = videoRef.current;
-      if (!video || video.ended) return;
-      if (video.currentTime === lastTime) {
-        frozenTicks += 1;
-        if (frozenTicks >= 3) recordAndAdvance('interrupted');
+      const wd = watchdogRef.current;
+      if (!video || !wd || video.ended) return;
+      if (wd.checkVideoProgress(video.currentTime)) {
+        setStalled(true);
+        recordAndAdvance('interrupted', currentItem.assetId);
       } else {
-        lastTime = video.currentTime;
-        frozenTicks = 0;
+        setStalled(false);
+        lastFrameAdvanceAtRef.current = new Date().toISOString();
       }
     }, 2_000);
     return () => clearInterval(watchdog);
-  }, [currentItem, recordAndAdvance, standby]);
+  }, [currentItem, recordAndAdvance, safeMode, standby]);
 
   const isSwapped = rotationDeg === 90 || rotationDeg === 270;
   const logicalW = isSwapped ? viewport.h : viewport.w;
@@ -271,6 +318,7 @@ export function App() {
     <div className="relative h-screen w-screen overflow-hidden bg-black">
       <PlayerStage
         standby={standby}
+        safeMode={safeMode}
         compact={compact}
         isOnline={isOnline}
         isPortrait={isPortrait}
@@ -318,6 +366,7 @@ export function App() {
         cachedCount={cachedCount}
         popQueuedCount={popQueuedCount}
         clockOffsetMs={clockOffsetMs}
+        quarantinedCount={watchdogRef.current?.getQuarantinedIds().length ?? 0}
         onToggleMute={() => setIsMuted((v) => !v)}
         onToggleHud={() => setShowHud((v) => !v)}
         onSync={previewScreenId ? syncPreviewManifest : syncManifest}

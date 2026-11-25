@@ -35,7 +35,24 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+let refreshPromise: Promise<boolean> | null = null;
+
+async function refreshSessionOnce(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = fetch('/api/v1/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then((res) => res.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
+async function request<T>(path: string, init?: RequestInit, retried = false): Promise<T> {
   const headers = new Headers(init?.headers);
   if (init?.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
@@ -46,6 +63,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers,
     credentials: 'include',
   });
+
+  if (res.status === 401 && !retried && !path.startsWith('/auth/')) {
+    const refreshed = await refreshSessionOnce();
+    if (refreshed) {
+      return request<T>(path, init, true);
+    }
+  }
 
   if (!res.ok) {
     let message = `Request failed (${res.status})`;

@@ -6,9 +6,9 @@ import type {
   RotationDeg,
   SyncMode,
   TransitionType,
-} from '@signage/shared';
+} from '@signage/shared/contracts';
 
-interface DiagnosticsHudProps {
+export interface DiagnosticsHudProps {
   compact: boolean;
   showHud: boolean;
   showPill: boolean;
@@ -36,6 +36,7 @@ interface DiagnosticsHudProps {
   cachedCount: number;
   popQueuedCount: number;
   clockOffsetMs: number;
+  quarantinedCount?: number;
   onToggleMute: () => void;
   onToggleHud: () => void;
   onSync: () => void;
@@ -70,6 +71,7 @@ export function DiagnosticsHud({
   cachedCount,
   popQueuedCount,
   clockOffsetMs,
+  quarantinedCount = 0,
   onToggleMute,
   onToggleHud,
   onSync,
@@ -180,7 +182,7 @@ export function DiagnosticsHud({
             </div>
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Cached Assets (IDB)</dt>
-              <dd>{cachedCount}</dd>
+              <dd>{cachedCount}{quarantinedCount > 0 ? ` (${quarantinedCount} quarantined)` : ''}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-muted-foreground">PoP Queued</dt>

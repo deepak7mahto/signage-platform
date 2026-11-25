@@ -11,6 +11,8 @@
   "dependencies": {
     "@noble/hashes": "^1.7.1",
     "@radix-ui/react-slot": "^1.1.2",
+    "@signage/player-core": "workspace:*",
+    "@signage/player-web-shell": "workspace:*",
     "@signage/shared": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

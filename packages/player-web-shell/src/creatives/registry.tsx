@@ -1,9 +1,9 @@
 import { Layers } from 'lucide-react';
 import type { ReactNode } from 'react';
-import type { ManifestItem } from '@signage/shared';
-import { HtmlCardView } from './HtmlCardView';
-import { IframeAddonView } from './IframeAddonView';
-import { WeatherWidget } from './WeatherWidget';
+import type { ManifestItem } from '@signage/shared/contracts';
+import { HtmlCardView } from './HtmlCardView.js';
+import { IframeAddonView } from './IframeAddonView.js';
+import { WeatherWidget } from './WeatherWidget.js';
 
 export interface CreativeRenderProps {
   item: ManifestItem;

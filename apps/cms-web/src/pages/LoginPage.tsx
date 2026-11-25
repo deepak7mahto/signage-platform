@@ -20,8 +20,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [email, setEmail] = useState('admin@signage.local');
-  const [password, setPassword] = useState('admin12345');
+  const [email, setEmail] = useState(import.meta.env.DEV ? 'admin@signage.local' : '');
+  const [password, setPassword] = useState(import.meta.env.DEV ? 'admin12345' : '');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -93,12 +93,14 @@ export function LoginPage() {
           </form>
         </CardContent>
 
-        <CardFooter className="border-t border-border pt-4 text-xs text-muted-foreground">
-          <span>
-            Default admin: <code className="text-foreground">admin@signage.local</code> /{' '}
-            <code className="text-foreground">admin12345</code>
-          </span>
-        </CardFooter>
+        {import.meta.env.DEV && (
+          <CardFooter className="border-t border-border pt-4 text-xs text-muted-foreground">
+            <span>
+              Default admin (dev): <code className="text-foreground">admin@signage.local</code> /{' '}
+              <code className="text-foreground">admin12345</code>
+            </span>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );

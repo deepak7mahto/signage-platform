@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
-import type { ServerToDeviceMessage } from '@signage/shared';
+import {
+  computeFullJitterBackoffMs,
+  dispatchDeviceCommand,
+  ExecutedCommandRingBuffer,
+  isDeviceRevokedResponse,
+} from '@signage/player-core';
+import type { PlaybackState, ServerToDeviceMessage } from '@signage/shared/contracts';
 import { APP_VERSION, type DeviceCredentials } from '../types';
 
 interface UseDeviceSocketOptions {
   creds: DeviceCredentials | null;
+  slot: string;
   previewScreenId: string | null;
   manifestVersion: number;
+  playbackState: PlaybackState;
+  lastFrameAdvanceAt: string;
   standby: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   imgRef: RefObject<HTMLImageElement | null>;
@@ -13,12 +22,27 @@ interface UseDeviceSocketOptions {
   onUnpair: () => Promise<void>;
   onSetStandby: (standby: boolean) => void;
   onSetMuted: (muted: boolean) => void;
+  onClearQuarantine?: (assetId?: string) => void;
+  onExitSafeMode?: () => void;
+}
+
+function loadExecutedIds(storageKey: string): string[] {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
 }
 
 export function useDeviceSocket({
   creds,
+  slot,
   previewScreenId,
   manifestVersion,
+  playbackState,
+  lastFrameAdvanceAt,
   standby,
   videoRef,
   imgRef,
@@ -26,9 +50,19 @@ export function useDeviceSocket({
   onUnpair,
   onSetStandby,
   onSetMuted,
+  onClearQuarantine,
+  onExitSafeMode,
 }: UseDeviceSocketOptions) {
   const [wsConnected, setWsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const cmdHistoryKey = `signage_exec_cmds_${slot}`;
+  const ringRef = useRef<ExecutedCommandRingBuffer | null>(null);
+  if (!ringRef.current) {
+    ringRef.current = new ExecutedCommandRingBuffer(loadExecutedIds(cmdHistoryKey));
+  }
+
+  const telemetryRef = useRef({ manifestVersion, playbackState, lastFrameAdvanceAt });
+  telemetryRef.current = { manifestVersion, playbackState, lastFrameAdvanceAt };
 
   const captureAndUploadScreenshot = useCallback(
     async (commandId: string, uploadUrl: string) => {
@@ -112,87 +146,139 @@ export function useDeviceSocket({
     let ws: WebSocket | null = null;
     let reconnectTimer: number | undefined;
     let closedByCleanup = false;
-    let backoffMs = 1500;
+    let attempt = 0;
+
+    const persistIds = (ids: string[]) => {
+      try {
+        localStorage.setItem(cmdHistoryKey, JSON.stringify(ids));
+      } catch {
+        // Ignore storage quota errors
+      }
+    };
 
     const sendAck = (commandId: string | undefined, command: string, detail: string) => {
       if (!commandId) return;
       ws?.send(JSON.stringify({ type: 'ack', commandId, command, status: 'ok', detail }));
     };
 
-    const connect = () => {
+    const connect = async () => {
       if (closedByCleanup) return;
-      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      ws = new WebSocket(`${proto}//${window.location.host}/ws/device?token=${encodeURIComponent(creds.deviceToken)}`);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        setWsConnected(true);
-        backoffMs = 1500;
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data as string) as ServerToDeviceMessage;
-          if (msg.type === 'sync_now') {
-            onSyncManifest().then(() => sendAck(msg.commandId, 'sync_now', 'Manifest synced'));
-          } else if (msg.type === 'ping') {
-            ws?.send(JSON.stringify({ type: 'pong', clientTime: new Date().toISOString() }));
-          } else if (msg.type === 'revoke') {
-            onUnpair();
-          } else if (msg.type === 'take_screenshot') {
-            captureAndUploadScreenshot(msg.commandId, msg.uploadUrl);
-          } else if (msg.type === 'cec_power') {
-            onSetStandby(msg.state === 'standby');
-            sendAck(msg.commandId, 'cec_power', `TV ${msg.state}`);
-          } else if (msg.type === 'set_volume') {
-            onSetMuted(msg.level === 0);
-            if (videoRef.current) {
-              videoRef.current.volume = msg.level / 100;
-              videoRef.current.muted = msg.level === 0;
-            }
-            sendAck(msg.commandId, 'set_volume', `Volume ${msg.level}%`);
-          } else if (msg.type === 'reboot') {
-            sendAck(msg.commandId, 'reboot', 'Player restarted');
-            onSyncManifest();
+      try {
+        const ticketRes = await fetch('/api/v1/device/ws-ticket', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${creds.deviceToken}` },
+        });
+        if (ticketRes.status === 410) {
+          const body = (await ticketRes.json().catch(() => null)) as unknown;
+          if (isDeviceRevokedResponse(410, body)) {
+            await onUnpair();
+            return;
           }
-        } catch {
-          // ignore malformed messages
         }
-      };
+        if (!ticketRes.ok) {
+          throw new Error(`WS ticket HTTP ${ticketRes.status}`);
+        }
+        const { ticket } = (await ticketRes.json()) as { ticket: string };
+        if (closedByCleanup) return;
 
-      ws.onclose = () => {
-        setWsConnected(false);
-        if (wsRef.current === ws) wsRef.current = null;
+        const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        ws = new WebSocket(`${proto}//${window.location.host}/ws/device?ticket=${encodeURIComponent(ticket)}`);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          setWsConnected(true);
+          attempt = 0;
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data as string) as ServerToDeviceMessage;
+            void dispatchDeviceCommand(
+              msg,
+              {
+                onSyncManifest,
+                onRevoke: onUnpair,
+                onScreenshot: captureAndUploadScreenshot,
+                onSetStandby,
+                onSetVolume: (level) => {
+                  onSetMuted(level === 0);
+                  if (videoRef.current) {
+                    videoRef.current.volume = level / 100;
+                    videoRef.current.muted = level === 0;
+                  }
+                },
+                onReboot: async () => {
+                  await onSyncManifest();
+                },
+                onClearQuarantine,
+                onExitSafeMode,
+                sendPong: () => {
+                  ws?.send(JSON.stringify({ type: 'pong', clientTime: new Date().toISOString() }));
+                },
+                sendAck,
+              },
+              ringRef.current!,
+              persistIds,
+            );
+          } catch {
+            // ignore malformed messages
+          }
+        };
+
+        ws.onclose = (ev) => {
+          setWsConnected(false);
+          if (wsRef.current === ws) wsRef.current = null;
+          if (ev.code === 4003) {
+            void onUnpair();
+            return;
+          }
+          if (!closedByCleanup) {
+            const delay = computeFullJitterBackoffMs(attempt);
+            attempt += 1;
+            reconnectTimer = window.setTimeout(() => void connect(), delay);
+          }
+        };
+      } catch {
         if (!closedByCleanup) {
-          reconnectTimer = window.setTimeout(connect, backoffMs);
-          backoffMs = Math.min(backoffMs * 2, 30_000);
+          const delay = computeFullJitterBackoffMs(attempt);
+          attempt += 1;
+          reconnectTimer = window.setTimeout(() => void connect(), delay);
         }
-      };
+      }
     };
 
-    connect();
+    void connect();
 
     const sendHeartbeat = async () => {
       try {
-        await fetch('/api/v1/device/heartbeat', {
+        const res = await fetch('/api/v1/device/heartbeat', {
           method: 'POST',
           headers: { Authorization: `Bearer ${creds.deviceToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             appVersion: APP_VERSION,
-            manifestVersion,
+            manifestVersion: telemetryRef.current.manifestVersion,
+            playbackState: telemetryRef.current.playbackState,
+            lastFrameAdvanceAt: telemetryRef.current.lastFrameAdvanceAt,
+            capabilities: ['screenshot', 'volume', 'cec_power', 'reboot'],
             hwInfo: {
               userAgent: navigator.userAgent,
               screen: `${window.innerWidth}x${window.innerHeight}`,
             },
           }),
         });
+        if (res.status === 410) {
+          const body = (await res.json().catch(() => null)) as unknown;
+          if (isDeviceRevokedResponse(410, body)) {
+            await onUnpair();
+          }
+        }
       } catch {
         // Offline
       }
     };
 
-    sendHeartbeat();
-    const hbTimer = window.setInterval(sendHeartbeat, 60_000);
+    void sendHeartbeat();
+    const hbTimer = window.setInterval(() => void sendHeartbeat(), 60_000);
 
     return () => {
       closedByCleanup = true;
@@ -202,8 +288,10 @@ export function useDeviceSocket({
     };
   }, [
     captureAndUploadScreenshot,
+    cmdHistoryKey,
     creds,
-    manifestVersion,
+    onClearQuarantine,
+    onExitSafeMode,
     onSetMuted,
     onSetStandby,
     onSyncManifest,

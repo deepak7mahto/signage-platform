@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { isBinaryMediaType, type DeviceManifest, type ManifestItem } from '@signage/shared';
+import { fetchSignedManifest } from '@signage/player-core';
+import { isBinaryMediaType } from '@signage/shared/creatives';
+import type { DeviceManifest, ManifestItem } from '@signage/shared/contracts';
 import {
   computeSha256Hex,
   gcCachedAssets,
@@ -24,12 +26,14 @@ export function useManifestSync(
   const [previewError, setPreviewError] = useState<string | null>(null);
 
   const objectUrlsRef = useRef<Record<string, string>>({});
+  const etagRef = useRef<string | null>(null);
   const manifestVersionRef = useRef(0);
   manifestVersionRef.current = manifest?.manifestVersion ?? 0;
 
   const revokeAllObjectUrls = useCallback(() => {
     for (const url of Object.values(objectUrlsRef.current)) URL.revokeObjectURL(url);
     objectUrlsRef.current = {};
+    etagRef.current = null;
     setPlayableUrls({});
     setManifest(null);
   }, []);
@@ -42,6 +46,7 @@ export function useManifestSync(
     }
 
     const keepIds = new Set(uniqueItems.keys());
+    const keepSha256s = new Set<string>();
     const urls: Record<string, string> = {};
 
     for (const item of uniqueItems.values()) {
@@ -51,8 +56,10 @@ export function useManifestSync(
         continue;
       }
 
-      const cached = await getCachedAsset(item.assetId);
-      if (cached && cached.sha256 === item.sha256) {
+      if (item.sha256) keepSha256s.add(item.sha256);
+
+      const cached = item.sha256 ? await getCachedAsset(item.sha256) : null;
+      if (cached) {
         if (!objectUrlsRef.current[item.assetId]) {
           objectUrlsRef.current[item.assetId] = URL.createObjectURL(cached.blob);
         }
@@ -69,8 +76,8 @@ export function useManifestSync(
         if (actualHash !== item.sha256) continue;
         const blob = new Blob([buf], { type: item.mimeType });
         await putCachedAsset({
-          assetId: item.assetId,
           sha256: actualHash,
+          assetId: item.assetId,
           mimeType: item.mimeType,
           blob,
           cachedAt: Date.now(),
@@ -80,13 +87,7 @@ export function useManifestSync(
         urls[item.assetId] = objectUrlsRef.current[item.assetId];
         setPlayableUrls({ ...urls });
       } catch {
-        if (cached) {
-          if (!objectUrlsRef.current[item.assetId]) {
-            objectUrlsRef.current[item.assetId] = URL.createObjectURL(cached.blob);
-          }
-          urls[item.assetId] = objectUrlsRef.current[item.assetId];
-          setPlayableUrls({ ...urls });
-        }
+        // Offline or network hiccup: cached blob already checked above
       }
     }
 
@@ -97,7 +98,7 @@ export function useManifestSync(
       }
     }
 
-    setCachedCount(await gcCachedAssets(keepIds));
+    setCachedCount(await gcCachedAssets(keepSha256s));
     setPlayableUrls(urls);
   }, []);
 
@@ -105,19 +106,25 @@ export function useManifestSync(
     if (!creds) return;
     setSyncing(true);
     try {
-      const res = await fetch('/api/v1/device/manifest', {
-        headers: { Authorization: `Bearer ${creds.deviceToken}` },
+      const result = await fetchSignedManifest({
+        deviceToken: creds.deviceToken,
+        etag: etagRef.current,
       });
-      if (res.status === 401) {
+      if (result.status === 'revoked') {
         await onRevoked();
         return;
       }
-      if (res.ok) {
-        const nextManifest = (await res.json()) as DeviceManifest;
-        setClockOffsetMs(Date.parse(nextManifest.serverTime) - Date.now());
-        await saveCachedManifest(nextManifest, slot);
-        setManifest(nextManifest);
-        await hydrateAndSyncAssets(nextManifest);
+      if (result.status === 'not_modified') {
+        if (result.etag) etagRef.current = result.etag;
+        if (result.clockOffsetMs !== null) setClockOffsetMs(result.clockOffsetMs);
+        return;
+      }
+      if (result.status === 'updated') {
+        etagRef.current = result.etag;
+        setClockOffsetMs(result.clockOffsetMs);
+        await saveCachedManifest(result.manifest, slot);
+        setManifest(result.manifest);
+        await hydrateAndSyncAssets(result.manifest);
       }
     } catch {
       const cached = await loadCachedManifest(slot);
