@@ -14,12 +14,15 @@ export const LoginRequestSchema = z.object({
 });
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 
+export const UserRoleSchema = z.enum(['owner', 'admin', 'ops', 'editor', 'viewer']);
+export type UserRole = z.infer<typeof UserRoleSchema>;
+
 export const AuthUserSchema = z.object({
   id: z.string().uuid(),
   orgId: z.string().uuid(),
   email: z.string().email(),
   name: z.string(),
-  role: z.enum(['owner', 'admin', 'editor', 'viewer']),
+  role: UserRoleSchema,
 });
 export type AuthUser = z.infer<typeof AuthUserSchema>;
 

@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MAX_LINES = 400;
-const SOURCE_EXTS = new Set(['.ts', '.tsx', '.kt']);
-const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', '.git', '.gradle']);
+const SOURCE_EXTS = new Set(['.ts', '.tsx', '.kt', '.rs']);
+const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', '.git', '.gradle', 'target']);
 const TS_FORBIDDEN = [
   { name: 'explicit any type annotation', regex: /:\s*any\b/ },
   { name: 'any type cast', regex: /\bas\s+any\b/ },

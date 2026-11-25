@@ -73,6 +73,8 @@ export const RemoteCommandTypeSchema = z.enum([
   'reboot',
   'set_volume',
   'cec_power',
+  'clear_quarantine',
+  'exit_safe_mode',
 ]);
 export type RemoteCommandType = z.infer<typeof RemoteCommandTypeSchema>;
 
@@ -82,17 +84,49 @@ export const SendScreenCommandSchema = z.object({
 });
 export type SendScreenCommand = z.infer<typeof SendScreenCommandSchema>;
 
+export const CommandStatusSchema = z.enum([
+  'queued',
+  'claimed',
+  'executed',
+  'acked',
+  'failed',
+  'expired',
+]);
+export type CommandStatus = z.infer<typeof CommandStatusSchema>;
+
 export const ScreenCommandSchema = z.object({
   id: z.string().uuid(),
   screenId: z.string().uuid(),
   command: RemoteCommandTypeSchema,
   payload: z.record(z.unknown()).nullable(),
-  status: z.enum(['queued', 'acked', 'failed']),
+  status: CommandStatusSchema,
   detail: z.string().nullable(),
   createdAt: z.string(),
   ackedAt: z.string().nullable(),
+  expiresAt: z.string().nullable().optional(),
+  deliveredAt: z.string().nullable().optional(),
+  coalesceKey: z.string().nullable().optional(),
+  attempts: z.number().int().nonnegative().optional(),
 });
 export type ScreenCommand = z.infer<typeof ScreenCommandSchema>;
+
+export const DeviceRevokedErrorSchema = z.object({
+  errorCode: z.literal('DEVICE_REVOKED'),
+  message: z.string(),
+});
+export type DeviceRevokedError = z.infer<typeof DeviceRevokedErrorSchema>;
+
+export const WsTicketResponseSchema = z.object({
+  ticket: z.string(),
+  expiresAt: z.string(),
+});
+export type WsTicketResponse = z.infer<typeof WsTicketResponseSchema>;
+
+export const CommandClaimResponseSchema = z.object({
+  commands: z.array(ScreenCommandSchema),
+  serverTime: z.string(),
+});
+export type CommandClaimResponse = z.infer<typeof CommandClaimResponseSchema>;
 
 export const ScreenScreenshotSchema = z.object({
   id: z.string().uuid(),
@@ -148,6 +182,17 @@ export const ServerToDeviceMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('cec_power'),
     commandId: z.string().uuid(),
     state: z.enum(['on', 'standby']),
+    serverTime: z.string(),
+  }),
+  z.object({
+    type: z.literal('clear_quarantine'),
+    commandId: z.string().uuid(),
+    assetId: z.string().uuid().optional(),
+    serverTime: z.string(),
+  }),
+  z.object({
+    type: z.literal('exit_safe_mode'),
+    commandId: z.string().uuid(),
     serverTime: z.string(),
   }),
 ]);

@@ -1,0 +1,404 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "name": "higher_priority_wins",
+      "nowIso": "2026-11-25T10:00:00Z",
+      "manifest": {
+        "screenId": "00000000-0000-4000-8000-000000000001",
+        "screenName": "Lobby Screen",
+        "timezone": "UTC",
+        "orientation": "landscape",
+        "playlistId": "11111111-1111-4111-8111-111111111111",
+        "playlistName": "Default Loop",
+        "manifestVersion": 1,
+        "generatedAt": "2026-11-25T09:00:00Z",
+        "serverTime": "2026-11-25T09:00:00Z",
+        "items": [
+          {
+            "itemId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+            "assetId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
+            "title": "Default Slide",
+            "type": "image",
+            "mimeType": "image/png",
+            "sha256": "abc1",
+            "sizeBytes": 1000,
+            "durationMs": 10000,
+            "sortOrder": 0,
+            "url": "https://cdn.example.com/default.png"
+          }
+        ],
+        "schedules": [
+          {
+            "id": "20000000-0000-4000-8000-000000000001",
+            "name": "Low Priority",
+            "playlistId": "11111111-1111-4111-8111-111111111112",
+            "priority": 20,
+            "daysOfWeek": [3],
+            "startTime": "09:00",
+            "endTime": "18:00",
+            "validFrom": null,
+            "validUntil": null
+          },
+          {
+            "id": "20000000-0000-4000-8000-000000000002",
+            "name": "High Priority",
+            "playlistId": "11111111-1111-4111-8111-111111111113",
+            "priority": 80,
+            "daysOfWeek": [3],
+            "startTime": "09:00",
+            "endTime": "18:00",
+            "validFrom": null,
+            "validUntil": null
+          }
+        ],
+        "playlists": {
+          "11111111-1111-4111-8111-111111111112": {
+            "id": "11111111-1111-4111-8111-111111111112",
+            "name": "Low Playlist",
+            "version": 1,
+            "items": [
+              {
+                "itemId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+                "assetId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2",
+                "title": "Low Slide",
+                "type": "image",
+                "mimeType": "image/png",
+                "sha256": "abc2",
+                "sizeBytes": 1000,
+                "durationMs": 10000,
+                "sortOrder": 0,
+                "url": "https://cdn.example.com/low.png"
+              }
+            ]
+          },
+          "11111111-1111-4111-8111-111111111113": {
+            "id": "11111111-1111-4111-8111-111111111113",
+            "name": "High Playlist",
+            "version": 1,
+            "items": [
+              {
+                "itemId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3",
+                "assetId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb3",
+                "title": "High Slide",
+                "type": "image",
+                "mimeType": "image/png",
+                "sha256": "abc3",
+                "sizeBytes": 1000,
+                "durationMs": 10000,
+                "sortOrder": 0,
+                "url": "https://cdn.example.com/high.png"
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "playlistId": "11111111-1111-4111-8111-111111111113",
+        "scheduleName": "High Priority",
+        "itemCount": 1
+      }
+    },
+    {
+      "name": "empty_playlist_skipped",
+      "nowIso": "2026-11-25T10:00:00Z",
+      "manifest": {
+        "screenId": "00000000-0000-4000-8000-000000000001",
+        "screenName": "Lobby Screen",
+        "timezone": "UTC",
+        "orientation": "landscape",
+        "playlistId": "11111111-1111-4111-8111-111111111111",
+        "playlistName": "Default Loop",
+        "manifestVersion": 1,
+        "generatedAt": "2026-11-25T09:00:00Z",
+        "serverTime": "2026-11-25T09:00:00Z",
+        "items": [],
+        "schedules": [
+          {
+            "id": "20000000-0000-4000-8000-000000000010",
+            "name": "Empty Override",
+            "playlistId": "11111111-1111-4111-8111-111111111114",
+            "priority": 100,
+            "daysOfWeek": [],
+            "startTime": "00:00",
+            "endTime": "23:59",
+            "validFrom": null,
+            "validUntil": null
+          },
+          {
+            "id": "20000000-0000-4000-8000-000000000011",
+            "name": "Fallback Scheduled",
+            "playlistId": "11111111-1111-4111-8111-111111111115",
+            "priority": 40,
+            "daysOfWeek": [],
+            "startTime": "00:00",
+            "endTime": "23:59",
+            "validFrom": null,
+            "validUntil": null
+          }
+        ],
+        "playlists": {
+          "11111111-1111-4111-8111-111111111114": {
+            "id": "11111111-1111-4111-8111-111111111114",
+            "name": "Empty Playlist",
+            "version": 1,
+            "items": []
+          },
+          "11111111-1111-4111-8111-111111111115": {
+            "id": "11111111-1111-4111-8111-111111111115",
+            "name": "Populated Playlist",
+            "version": 1,
+            "items": [
+              {
+                "itemId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4",
+                "assetId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb4",
+                "title": "Populated Slide",
+                "type": "image",
+                "mimeType": "image/png",
+                "sha256": "abc4",
+                "sizeBytes": 1000,
+                "durationMs": 10000,
+                "sortOrder": 0,
+                "url": "https://cdn.example.com/pop.png"
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "playlistId": "11111111-1111-4111-8111-111111111115",
+        "scheduleName": "Fallback Scheduled",
+        "itemCount": 1
+      }
+    },
+    {
+      "name": "equal_priority_updated_at_desc",
+      "nowIso": "2026-11-25T10:00:00Z",
+      "manifest": {
+        "screenId": "00000000-0000-4000-8000-000000000001",
+        "screenName": "Lobby Screen",
+        "timezone": "UTC",
+        "orientation": "landscape",
+        "playlistId": null,
+        "playlistName": null,
+        "manifestVersion": 1,
+        "generatedAt": "2026-11-25T09:00:00Z",
+        "serverTime": "2026-11-25T09:00:00Z",
+        "items": [],
+        "schedules": [
+          {
+            "id": "20000000-0000-4000-8000-000000000001",
+            "name": "Older Schedule",
+            "playlistId": "11111111-1111-4111-8111-111111111112",
+            "priority": 50,
+            "daysOfWeek": [],
+            "startTime": "00:00",
+            "endTime": "23:59",
+            "validFrom": null,
+            "validUntil": null,
+            "updatedAt": "2026-11-24T12:00:00Z"
+          },
+          {
+            "id": "20000000-0000-4000-8000-000000000099",
+            "name": "Newer Schedule",
+            "playlistId": "11111111-1111-4111-8111-111111111113",
+            "priority": 50,
+            "daysOfWeek": [],
+            "startTime": "00:00",
+            "endTime": "23:59",
+            "validFrom": null,
+            "validUntil": null,
+            "updatedAt": "2026-11-25T08:00:00Z"
+          }
+        ],
+        "playlists": {
+          "11111111-1111-4111-8111-111111111112": {
+            "id": "11111111-1111-4111-8111-111111111112",
+            "name": "Old PL",
+            "version": 1,
+            "items": [
+              {
+                "itemId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5",
+                "assetId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb5",
+                "title": "Old",
+                "type": "image",
+                "mimeType": "image/png",
+                "sha256": "abc5",
+                "sizeBytes": 1000,
+                "durationMs": 10000,
+                "sortOrder": 0,
+                "url": "https://cdn.example.com/old.png"
+              }
+            ]
+          },
+          "11111111-1111-4111-8111-111111111113": {
+            "id": "11111111-1111-4111-8111-111111111113",
+            "name": "New PL",
+            "version": 1,
+            "items": [
+              {
+                "itemId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa6",
+                "assetId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb6",
+                "title": "New",
+                "type": "image",
+                "mimeType": "image/png",
+                "sha256": "abc6",
+                "sizeBytes": 1000,
+                "durationMs": 10000,
+                "sortOrder": 0,
+                "url": "https://cdn.example.com/new.png"
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "playlistId": "11111111-1111-4111-8111-111111111113",
+        "scheduleName": "Newer Schedule",
+        "itemCount": 1
+      }
+    },
+    {
+      "name": "equal_priority_and_updated_at_id_asc_tiebreak",
+      "nowIso": "2026-11-25T10:00:00Z",
+      "manifest": {
+        "screenId": "00000000-0000-4000-8000-000000000001",
+        "screenName": "Lobby Screen",
+        "timezone": "UTC",
+        "orientation": "landscape",
+        "playlistId": null,
+        "playlistName": null,
+        "manifestVersion": 1,
+        "generatedAt": "2026-11-25T09:00:00Z",
+        "serverTime": "2026-11-25T09:00:00Z",
+        "items": [],
+        "schedules": [
+          {
+            "id": "20000000-0000-4000-8000-000000000009",
+            "name": "Second ID",
+            "playlistId": "11111111-1111-4111-8111-111111111113",
+            "priority": 50,
+            "daysOfWeek": [],
+            "startTime": "00:00",
+            "endTime": "23:59",
+            "validFrom": null,
+            "validUntil": null,
+            "updatedAt": "2026-11-25T08:00:00Z"
+          },
+          {
+            "id": "20000000-0000-4000-8000-000000000002",
+            "name": "First ID",
+            "playlistId": "11111111-1111-4111-8111-111111111112",
+            "priority": 50,
+            "daysOfWeek": [],
+            "startTime": "00:00",
+            "endTime": "23:59",
+            "validFrom": null,
+            "validUntil": null,
+            "updatedAt": "2026-11-25T08:00:00Z"
+          }
+        ],
+        "playlists": {
+          "11111111-1111-4111-8111-111111111112": {
+            "id": "11111111-1111-4111-8111-111111111112",
+            "name": "First PL",
+            "version": 1,
+            "items": [
+              {
+                "itemId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa7",
+                "assetId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb7",
+                "title": "First",
+                "type": "image",
+                "mimeType": "image/png",
+                "sha256": "abc7",
+                "sizeBytes": 1000,
+                "durationMs": 10000,
+                "sortOrder": 0,
+                "url": "https://cdn.example.com/first.png"
+              }
+            ]
+          },
+          "11111111-1111-4111-8111-111111111113": {
+            "id": "11111111-1111-4111-8111-111111111113",
+            "name": "Second PL",
+            "version": 1,
+            "items": [
+              {
+                "itemId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa8",
+                "assetId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb8",
+                "title": "Second",
+                "type": "image",
+                "mimeType": "image/png",
+                "sha256": "abc8",
+                "sizeBytes": 1000,
+                "durationMs": 10000,
+                "sortOrder": 0,
+                "url": "https://cdn.example.com/second.png"
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "playlistId": "11111111-1111-4111-8111-111111111112",
+        "scheduleName": "First ID",
+        "itemCount": 1
+      }
+    },
+    {
+      "name": "overnight_window_asia_kolkata_active",
+      "nowIso": "2026-11-26T00:15:00Z",
+      "manifest": {
+        "screenId": "00000000-0000-4000-8000-000000000001",
+        "screenName": "Mumbai Lobby",
+        "timezone": "Asia/Kolkata",
+        "orientation": "landscape",
+        "playlistId": "11111111-1111-4111-8111-111111111111",
+        "playlistName": "Default Loop",
+        "manifestVersion": 1,
+        "generatedAt": "2026-11-25T09:00:00Z",
+        "serverTime": "2026-11-25T09:00:00Z",
+        "items": [],
+        "schedules": [
+          {
+            "id": "20000000-0000-4000-8000-000000000020",
+            "name": "Night Promo",
+            "playlistId": "11111111-1111-4111-8111-111111111112",
+            "priority": 60,
+            "daysOfWeek": [4],
+            "startTime": "22:00",
+            "endTime": "06:00",
+            "validFrom": "2026-11-25",
+            "validUntil": "2026-11-27"
+          }
+        ],
+        "playlists": {
+          "11111111-1111-4111-8111-111111111112": {
+            "id": "11111111-1111-4111-8111-111111111112",
+            "name": "Night Loop",
+            "version": 1,
+            "items": [
+              {
+                "itemId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa9",
+                "assetId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb9",
+                "title": "Night",
+                "type": "image",
+                "mimeType": "image/png",
+                "sha256": "abc9",
+                "sizeBytes": 1000,
+                "durationMs": 10000,
+                "sortOrder": 0,
+                "url": "https://cdn.example.com/night.png"
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "playlistId": "11111111-1111-4111-8111-111111111112",
+        "scheduleName": "Night Promo",
+        "itemCount": 1
+      }
+    }
+  ]
+}

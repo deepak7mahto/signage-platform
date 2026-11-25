@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "seekThresholdMs": 600,
+  "cases": [
+    {
+      "name": "second_item_exact_offset",
+      "input": {
+        "durationsMs": [10000, 15000, 5000],
+        "nowMs": 9500,
+        "clockOffsetMs": 1000,
+        "epochMs": 0,
+        "currentIndex": 1,
+        "currentPositionMs": 500
+      },
+      "expected": {
+        "itemIndex": 1,
+        "positionMs": 500,
+        "loopPositionMs": 10500,
+        "totalDurationMs": 30000,
+        "needsSeek": false
+      }
+    },
+    {
+      "name": "drift_within_threshold_no_seek",
+      "input": {
+        "durationsMs": [10000, 15000, 5000],
+        "nowMs": 12000,
+        "clockOffsetMs": 0,
+        "epochMs": 0,
+        "currentIndex": 1,
+        "currentPositionMs": 2550
+      },
+      "expected": {
+        "itemIndex": 1,
+        "positionMs": 2000,
+        "loopPositionMs": 12000,
+        "totalDurationMs": 30000,
+        "needsSeek": false
+      }
+    },
+    {
+      "name": "drift_above_600ms_triggers_seek",
+      "input": {
+        "durationsMs": [10000, 15000, 5000],
+        "nowMs": 12000,
+        "clockOffsetMs": 0,
+        "epochMs": 0,
+        "currentIndex": 1,
+        "currentPositionMs": 1200
+      },
+      "expected": {
+        "itemIndex": 1,
+        "positionMs": 2000,
+        "loopPositionMs": 12000,
+        "totalDurationMs": 30000,
+        "needsSeek": true
+      }
+    },
+    {
+      "name": "wrap_around_loop_third_item",
+      "input": {
+        "durationsMs": [10000, 15000, 5000],
+        "nowMs": 86000,
+        "clockOffsetMs": 0,
+        "epochMs": 0,
+        "currentIndex": 0,
+        "currentPositionMs": 0
+      },
+      "expected": {
+        "itemIndex": 2,
+        "positionMs": 1000,
+        "loopPositionMs": 26000,
+        "totalDurationMs": 30000,
+        "needsSeek": true
+      }
+    },
+    {
+      "name": "empty_durations_returns_null",
+      "input": {
+        "durationsMs": [],
+        "nowMs": 10000
+      },
+      "expected": null
+    }
+  ]
+}

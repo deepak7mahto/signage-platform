@@ -30,6 +30,7 @@ export const ManifestScheduleSchema = z.object({
   endTime: z.string(),
   validFrom: z.string().nullable(),
   validUntil: z.string().nullable(),
+  updatedAt: z.string().optional(),
 });
 export type ManifestSchedule = z.infer<typeof ManifestScheduleSchema>;
 
@@ -122,7 +123,8 @@ export function resolveActiveManifestPlaylist(
 
     const matching = schedules
       .filter((s) => {
-        if (!playlists[s.playlistId]) return false;
+        const pl = playlists[s.playlistId];
+        if (!pl || pl.items.length === 0) return false;
         if (s.validFrom && dateStr < s.validFrom) return false;
         if (s.validUntil && dateStr > s.validUntil) return false;
         if (s.daysOfWeek.length > 0 && !s.daysOfWeek.includes(dayIndex)) return false;
@@ -132,7 +134,13 @@ export function resolveActiveManifestPlaylist(
         }
         return timeStr >= s.startTime || timeStr <= s.endTime;
       })
-      .sort((a, b) => b.priority - a.priority);
+      .sort((a, b) => {
+        if (b.priority !== a.priority) return b.priority - a.priority;
+        const aUpdated = a.updatedAt ?? '';
+        const bUpdated = b.updatedAt ?? '';
+        if (bUpdated !== aUpdated) return bUpdated.localeCompare(aUpdated);
+        return a.id.localeCompare(b.id);
+      });
 
     if (matching.length > 0) {
       const top = matching[0];
@@ -151,5 +159,66 @@ export function resolveActiveManifestPlaylist(
     playlistName: manifest.playlistName,
     scheduleName: null,
     items: manifest.items,
+  };
+}
+
+export interface ClockSyncInput {
+  durationsMs: number[];
+  nowMs: number;
+  clockOffsetMs?: number;
+  epochMs?: number;
+  currentIndex?: number;
+  currentPositionMs?: number;
+  seekThresholdMs?: number;
+}
+
+export interface ClockSyncResult {
+  itemIndex: number;
+  positionMs: number;
+  loopPositionMs: number;
+  totalDurationMs: number;
+  needsSeek: boolean;
+}
+
+/**
+ * Computes deterministic synced loop cursor and whether a player must hard-seek
+ * (> seekThresholdMs default 600ms or item index mismatch).
+ */
+export function resolveClockSyncCursor(input: ClockSyncInput): ClockSyncResult | null {
+  const validDurations = input.durationsMs.filter((d) => Number.isFinite(d) && d > 0);
+  if (validDurations.length === 0) return null;
+
+  const totalDurationMs = validDurations.reduce((sum, d) => sum + d, 0);
+  const adjustedNowMs = input.nowMs + (input.clockOffsetMs ?? 0);
+  const elapsedFromEpoch = adjustedNowMs - (input.epochMs ?? 0);
+  const loopPositionMs = ((elapsedFromEpoch % totalDurationMs) + totalDurationMs) % totalDurationMs;
+
+  let acc = 0;
+  let itemIndex = 0;
+  let positionMs = 0;
+  for (let i = 0; i < validDurations.length; i += 1) {
+    const dur = validDurations[i];
+    if (loopPositionMs < acc + dur) {
+      itemIndex = i;
+      positionMs = loopPositionMs - acc;
+      break;
+    }
+    acc += dur;
+  }
+
+  const threshold = input.seekThresholdMs ?? 600;
+  const hasCurrent =
+    input.currentIndex !== undefined && input.currentPositionMs !== undefined;
+  const needsSeek = hasCurrent
+    ? input.currentIndex !== itemIndex ||
+      Math.abs((input.currentPositionMs ?? 0) - positionMs) > threshold
+    : true;
+
+  return {
+    itemIndex,
+    positionMs,
+    loopPositionMs,
+    totalDurationMs,
+    needsSeek,
   };
 }

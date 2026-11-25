@@ -137,6 +137,14 @@
             }
           }
         }
+      },
+      "delete": {
+        "summary": "Delete Media Asset",
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          }
+        }
       }
     },
     "/api/v1/media/upload-url": {
@@ -295,6 +303,14 @@
             }
           }
         }
+      },
+      "delete": {
+        "summary": "Delete Playlist",
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          }
+        }
       }
     },
     "/api/v1/screens": {
@@ -416,6 +432,24 @@
             }
           }
         }
+      },
+      "delete": {
+        "summary": "Revoke & Delete Screen",
+        "responses": {
+          "204": {
+            "description": "Revoked and deleted"
+          }
+        }
+      }
+    },
+    "/api/v1/screens/{id}/sync": {
+      "post": {
+        "summary": "Trigger Immediate Screen Sync",
+        "responses": {
+          "200": {
+            "description": "Sync queued"
+          }
+        }
       }
     },
     "/api/v1/screens/{id}/preview-manifest": {
@@ -431,6 +465,46 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/{id}/preview-pop": {
+      "post": {
+        "summary": "Admin Preview Simulated PoP",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PopBatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recorded"
+          }
+        }
+      }
+    },
+    "/api/v1/screens/{id}/preview-heartbeat": {
+      "post": {
+        "summary": "Admin Preview Simulated Heartbeat",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeartbeatRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -512,6 +586,16 @@
         }
       }
     },
+    "/api/v1/groups/{id}": {
+      "delete": {
+        "summary": "Delete Screen Group",
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
     "/api/v1/schedules": {
       "get": {
         "summary": "List Schedules",
@@ -562,6 +646,26 @@
         }
       }
     },
+    "/api/v1/schedules/{id}": {
+      "delete": {
+        "summary": "Delete Schedule",
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs": {
+      "get": {
+        "summary": "Query Audit Logs",
+        "responses": {
+          "200": {
+            "description": "Audit log entries"
+          }
+        }
+      }
+    },
     "/api/v1/reports/pop": {
       "get": {
         "summary": "Query Proof-of-Play Report",
@@ -575,6 +679,16 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/pop/export": {
+      "get": {
+        "summary": "Export Proof-of-Play CSV Report",
+        "responses": {
+          "200": {
+            "description": "CSV export"
           }
         }
       }
@@ -643,6 +757,40 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ClaimProvisionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/device/ws-ticket": {
+      "post": {
+        "summary": "Issue Short-Lived Device WebSocket Ticket",
+        "responses": {
+          "201": {
+            "description": "WS ticket",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WsTicketResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/device/commands/claim": {
+      "post": {
+        "summary": "Claim Queued Remote Device Commands",
+        "responses": {
+          "200": {
+            "description": "Claimed commands",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandClaimResponse"
                 }
               }
             }
@@ -789,6 +937,7 @@
             "enum": [
               "owner",
               "admin",
+              "ops",
               "editor",
               "viewer"
             ]
@@ -830,6 +979,107 @@
           "screenId",
           "screenName",
           "deviceToken"
+        ]
+      },
+      "CommandClaimResponse": {
+        "type": "object",
+        "properties": {
+          "commands": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "screenId": {
+                  "type": "string"
+                },
+                "command": {
+                  "type": "string",
+                  "enum": [
+                    "sync_now",
+                    "take_screenshot",
+                    "reboot",
+                    "set_volume",
+                    "cec_power",
+                    "clear_quarantine",
+                    "exit_safe_mode"
+                  ]
+                },
+                "payload": {
+                  "type": "object",
+                  "additionalProperties": {},
+                  "nullable": true
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "queued",
+                    "claimed",
+                    "executed",
+                    "acked",
+                    "failed",
+                    "expired"
+                  ]
+                },
+                "detail": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "ackedAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "deliveredAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "coalesceKey": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "attempts": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "screenId",
+                "command",
+                "payload",
+                "status",
+                "detail",
+                "createdAt",
+                "ackedAt"
+              ]
+            }
+          },
+          "serverTime": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "commands",
+          "serverTime"
+        ]
+      },
+      "CommandStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "claimed",
+          "executed",
+          "acked",
+          "failed",
+          "expired"
         ]
       },
       "CompleteUploadRequest": {
@@ -971,6 +1221,18 @@
         "type": "object",
         "additionalProperties": {}
       },
+      "DeviceCapability": {
+        "type": "string",
+        "enum": [
+          "dual_video",
+          "cec_power",
+          "ddc_ci",
+          "screenshot",
+          "reboot",
+          "volume",
+          "apk_ota"
+        ]
+      },
       "DeviceManifest": {
         "type": "object",
         "properties": {
@@ -1106,6 +1368,9 @@
                 "validUntil": {
                   "type": "string",
                   "nullable": true
+                },
+                "updatedAt": {
+                  "type": "string"
                 }
               },
               "required": [
@@ -1299,6 +1564,24 @@
           "items"
         ]
       },
+      "DeviceRevokedError": {
+        "type": "object",
+        "properties": {
+          "errorCode": {
+            "type": "string",
+            "enum": [
+              "DEVICE_REVOKED"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "errorCode",
+          "message"
+        ]
+      },
       "DeviceToServerMessage": {
         "oneOf": [
           {
@@ -1326,6 +1609,25 @@
                   "hwInfo": {
                     "type": "object",
                     "additionalProperties": {}
+                  },
+                  "playbackState": {
+                    "type": "string",
+                    "enum": [
+                      "playing",
+                      "idle",
+                      "stalled",
+                      "safe_mode",
+                      "unknown"
+                    ]
+                  },
+                  "lastFrameAdvanceAt": {
+                    "type": "string"
+                  },
+                  "capabilities": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -1466,6 +1768,25 @@
           "hwInfo": {
             "type": "object",
             "additionalProperties": {}
+          },
+          "playbackState": {
+            "type": "string",
+            "enum": [
+              "playing",
+              "idle",
+              "stalled",
+              "safe_mode",
+              "unknown"
+            ]
+          },
+          "lastFrameAdvanceAt": {
+            "type": "string"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -1669,6 +1990,9 @@
           "validUntil": {
             "type": "string",
             "nullable": true
+          },
+          "updatedAt": {
+            "type": "string"
           }
         },
         "required": [
@@ -1876,6 +2200,16 @@
           "code",
           "claimSecret",
           "expiresAt"
+        ]
+      },
+      "PlaybackState": {
+        "type": "string",
+        "enum": [
+          "playing",
+          "idle",
+          "stalled",
+          "safe_mode",
+          "unknown"
         ]
       },
       "PlaylistItemInput": {
@@ -2718,6 +3052,41 @@
               },
               "createdAt": {
                 "type": "string"
+              },
+              "siteId": {
+                "type": "string",
+                "nullable": true
+              },
+              "profileId": {
+                "type": "string",
+                "nullable": true
+              },
+              "manifestVersion": {
+                "type": "integer"
+              },
+              "playbackState": {
+                "type": "string",
+                "enum": [
+                  "playing",
+                  "idle",
+                  "stalled",
+                  "safe_mode",
+                  "unknown"
+                ]
+              },
+              "lastFrameAdvanceAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "capabilities": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "revokedAt": {
+                "type": "string",
+                "nullable": true
               }
             },
             "required": [
@@ -2758,7 +3127,9 @@
           "take_screenshot",
           "reboot",
           "set_volume",
-          "cec_power"
+          "cec_power",
+          "clear_quarantine",
+          "exit_safe_mode"
         ]
       },
       "RotationDeg": {
@@ -2896,7 +3267,9 @@
               "take_screenshot",
               "reboot",
               "set_volume",
-              "cec_power"
+              "cec_power",
+              "clear_quarantine",
+              "exit_safe_mode"
             ]
           },
           "payload": {
@@ -2908,8 +3281,11 @@
             "type": "string",
             "enum": [
               "queued",
+              "claimed",
+              "executed",
               "acked",
-              "failed"
+              "failed",
+              "expired"
             ]
           },
           "detail": {
@@ -2922,6 +3298,21 @@
           "ackedAt": {
             "type": "string",
             "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "deliveredAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "coalesceKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "attempts": {
+            "type": "integer"
           }
         },
         "required": [
@@ -3099,6 +3490,41 @@
               },
               "createdAt": {
                 "type": "string"
+              },
+              "siteId": {
+                "type": "string",
+                "nullable": true
+              },
+              "profileId": {
+                "type": "string",
+                "nullable": true
+              },
+              "manifestVersion": {
+                "type": "integer"
+              },
+              "playbackState": {
+                "type": "string",
+                "enum": [
+                  "playing",
+                  "idle",
+                  "stalled",
+                  "safe_mode",
+                  "unknown"
+                ]
+              },
+              "lastFrameAdvanceAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "capabilities": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "revokedAt": {
+                "type": "string",
+                "nullable": true
               }
             },
             "required": [
@@ -3157,7 +3583,9 @@
                     "take_screenshot",
                     "reboot",
                     "set_volume",
-                    "cec_power"
+                    "cec_power",
+                    "clear_quarantine",
+                    "exit_safe_mode"
                   ]
                 },
                 "payload": {
@@ -3169,8 +3597,11 @@
                   "type": "string",
                   "enum": [
                     "queued",
+                    "claimed",
+                    "executed",
                     "acked",
-                    "failed"
+                    "failed",
+                    "expired"
                   ]
                 },
                 "detail": {
@@ -3183,6 +3614,21 @@
                 "ackedAt": {
                   "type": "string",
                   "nullable": true
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "deliveredAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "coalesceKey": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "attempts": {
+                  "type": "integer"
                 }
               },
               "required": [
@@ -3478,6 +3924,41 @@
           },
           "createdAt": {
             "type": "string"
+          },
+          "siteId": {
+            "type": "string",
+            "nullable": true
+          },
+          "profileId": {
+            "type": "string",
+            "nullable": true
+          },
+          "manifestVersion": {
+            "type": "integer"
+          },
+          "playbackState": {
+            "type": "string",
+            "enum": [
+              "playing",
+              "idle",
+              "stalled",
+              "safe_mode",
+              "unknown"
+            ]
+          },
+          "lastFrameAdvanceAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "revokedAt": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
@@ -3536,7 +4017,9 @@
               "take_screenshot",
               "reboot",
               "set_volume",
-              "cec_power"
+              "cec_power",
+              "clear_quarantine",
+              "exit_safe_mode"
             ]
           },
           "payload": {
@@ -3718,6 +4201,53 @@
               "type",
               "commandId",
               "state",
+              "serverTime"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "clear_quarantine"
+                ]
+              },
+              "commandId": {
+                "type": "string"
+              },
+              "assetId": {
+                "type": "string"
+              },
+              "serverTime": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "commandId",
+              "serverTime"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "exit_safe_mode"
+                ]
+              },
+              "commandId": {
+                "type": "string"
+              },
+              "serverTime": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "commandId",
               "serverTime"
             ]
           }
@@ -4121,6 +4651,16 @@
           "uploadUrl"
         ]
       },
+      "UserRole": {
+        "type": "string",
+        "enum": [
+          "owner",
+          "admin",
+          "ops",
+          "editor",
+          "viewer"
+        ]
+      },
       "VenueType": {
         "type": "string",
         "enum": [
@@ -4130,6 +4670,21 @@
           "highway",
           "corporate",
           "other"
+        ]
+      },
+      "WsTicketResponse": {
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket",
+          "expiresAt"
         ]
       }
     }

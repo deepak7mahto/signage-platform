@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "authUserWithOpsRole": {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "orgId": "20000000-0000-4000-8000-000000000001",
+    "email": "ops@signage.local",
+    "name": "Fleet Operator",
+    "role": "ops"
+  },
+  "heartbeat": {
+    "appVersion": "1.2.0",
+    "manifestVersion": 14,
+    "currentAssetId": "30000000-0000-4000-8000-000000000001",
+    "playbackState": "playing",
+    "lastFrameAdvanceAt": "2026-11-25T10:00:00Z",
+    "capabilities": ["dual_video", "screenshot", "reboot"]
+  },
+  "screenCommands": [
+    {
+      "id": "40000000-0000-4000-8000-000000000001",
+      "screenId": "50000000-0000-4000-8000-000000000001",
+      "command": "clear_quarantine",
+      "payload": null,
+      "status": "claimed",
+      "detail": null,
+      "createdAt": "2026-11-25T10:00:00Z",
+      "ackedAt": null,
+      "expiresAt": "2026-11-25T10:05:00Z",
+      "deliveredAt": "2026-11-25T10:00:02Z",
+      "coalesceKey": "clear_quarantine",
+      "attempts": 1
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000002",
+      "screenId": "50000000-0000-4000-8000-000000000001",
+      "command": "exit_safe_mode",
+      "payload": { "reason": "operator_recovery" },
+      "status": "executed",
+      "detail": "Safe-mode exited cleanly",
+      "createdAt": "2026-11-25T10:01:00Z",
+      "ackedAt": "2026-11-25T10:01:04Z",
+      "expiresAt": "2026-11-25T10:16:00Z",
+      "deliveredAt": "2026-11-25T10:01:02Z",
+      "coalesceKey": "exit_safe_mode",
+      "attempts": 1
+    }
+  ],
+  "wsServerMessages": [
+    {
+      "type": "clear_quarantine",
+      "commandId": "40000000-0000-4000-8000-000000000001",
+      "assetId": "30000000-0000-4000-8000-000000000001",
+      "serverTime": "2026-11-25T10:00:02Z"
+    },
+    {
+      "type": "exit_safe_mode",
+      "commandId": "40000000-0000-4000-8000-000000000002",
+      "serverTime": "2026-11-25T10:01:02Z"
+    }
+  ],
+  "deviceRevokedError": {
+    "errorCode": "DEVICE_REVOKED",
+    "message": "Device credentials have been revoked"
+  },
+  "wsTicketResponse": {
+    "ticket": "wst_01JDH7A9G4V8N2R5M1P3",
+    "expiresAt": "2026-11-25T10:00:30Z"
+  },
+  "ssrfChecks": [
+    { "url": "https://menu.example.com/board", "allowHttpInDev": false, "blocked": false },
+    { "url": "http://menu.example.com/board", "allowHttpInDev": false, "blocked": true },
+    { "url": "http://menu.example.com/board", "allowHttpInDev": true, "blocked": false },
+    { "url": "http://127.0.0.1:8080/admin", "allowHttpInDev": true, "blocked": true },
+    { "url": "https://localhost:3000/", "allowHttpInDev": true, "blocked": true },
+    { "url": "https://169.254.169.254/latest/meta-data", "allowHttpInDev": true, "blocked": true },
+    { "url": "https://10.0.0.12/internal", "allowHttpInDev": true, "blocked": true },
+    { "url": "https://172.16.5.4/panel", "allowHttpInDev": true, "blocked": true },
+    { "url": "https://192.168.1.50/setup", "allowHttpInDev": true, "blocked": true },
+    { "url": "https://100.64.0.1/status", "allowHttpInDev": true, "blocked": true },
+    { "url": "https://[::1]/local", "allowHttpInDev": true, "blocked": true },
+    { "url": "https://[fc00::1]/ula", "allowHttpInDev": true, "blocked": true },
+    { "url": "https://printer.local/status", "allowHttpInDev": true, "blocked": true },
+    { "url": "javascript:alert(1)", "allowHttpInDev": true, "blocked": true }
+  ]
+}

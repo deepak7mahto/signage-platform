@@ -37,6 +37,26 @@ export type VenueType = z.infer<typeof VenueTypeSchema>;
 export const OrientationSchema = z.enum(['landscape', 'portrait']);
 export type Orientation = z.infer<typeof OrientationSchema>;
 
+export const PlaybackStateSchema = z.enum([
+  'playing',
+  'idle',
+  'stalled',
+  'safe_mode',
+  'unknown',
+]);
+export type PlaybackState = z.infer<typeof PlaybackStateSchema>;
+
+export const DeviceCapabilitySchema = z.enum([
+  'dual_video',
+  'cec_power',
+  'ddc_ci',
+  'screenshot',
+  'reboot',
+  'volume',
+  'apk_ota',
+]);
+export type DeviceCapability = z.infer<typeof DeviceCapabilitySchema>;
+
 export const ScreenSchema = z.object({
   id: z.string().uuid(),
   orgId: z.string().uuid(),
@@ -56,6 +76,13 @@ export const ScreenSchema = z.object({
   hwInfo: z.record(z.unknown()).nullable(),
   lastSeenAt: z.string().nullable(),
   createdAt: z.string(),
+  siteId: z.string().uuid().nullable().optional(),
+  profileId: z.string().uuid().nullable().optional(),
+  manifestVersion: z.number().int().nonnegative().optional(),
+  playbackState: PlaybackStateSchema.optional(),
+  lastFrameAdvanceAt: z.string().nullable().optional(),
+  capabilities: z.array(z.string()).optional(),
+  revokedAt: z.string().nullable().optional(),
 });
 export type Screen = z.infer<typeof ScreenSchema>;
 
@@ -152,6 +179,9 @@ export const HeartbeatRequestSchema = z.object({
   manifestVersion: z.number().int().nonnegative().optional(),
   currentAssetId: z.string().uuid().nullable().optional(),
   hwInfo: z.record(z.unknown()).optional(),
+  playbackState: PlaybackStateSchema.optional(),
+  lastFrameAdvanceAt: z.string().optional(),
+  capabilities: z.array(z.string()).optional(),
 });
 export type HeartbeatRequest = z.infer<typeof HeartbeatRequestSchema>;
 

@@ -21,6 +21,7 @@ export interface CreativeTypeDefinition {
   category: CreativeCategory;
   defaultDurationMs: number;
   requiresNetwork: boolean;
+  requiresSandbox?: boolean;
   fields: CreativeFieldDef[];
 }
 
@@ -56,6 +57,7 @@ export const CREATIVE_TYPE_REGISTRY: readonly CreativeTypeDefinition[] = [
     category: 'app',
     defaultDurationMs: 25_000,
     requiresNetwork: true,
+    requiresSandbox: true,
     fields: [
       {
         key: 'url',
@@ -79,6 +81,7 @@ export const CREATIVE_TYPE_REGISTRY: readonly CreativeTypeDefinition[] = [
     category: 'app',
     defaultDurationMs: 30_000,
     requiresNetwork: true,
+    requiresSandbox: true,
     fields: [
       {
         key: 'url',
@@ -186,6 +189,75 @@ export function getCreativeTypeDef(type: string): CreativeTypeDefinition | undef
 
 export function isBinaryMediaType(type: string): boolean {
   return type === 'video' || type === 'image';
+}
+
+function isBlockedIpv4(host: string): boolean {
+  const parts = host.split('.');
+  if (parts.length !== 4 || parts.some((p) => !/^\d+$/.test(p))) return false;
+  const octets = parts.map(Number);
+  if (octets.some((n) => n < 0 || n > 255)) return true;
+  const [a, b] = octets;
+  if (a === 0 || a === 10 || a === 127) return true;
+  if (a === 169 && b === 254) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 100 && b >= 64 && b <= 127) return true;
+  return false;
+}
+
+function isBlockedIpv6(host: string): boolean {
+  const clean = host.replace(/^\[|\]$/g, '').toLowerCase();
+  if (!clean.includes(':')) return false;
+  if (clean === '::' || clean === '::1') return true;
+  if (clean.startsWith('fc') || clean.startsWith('fd')) return true;
+  if (clean.startsWith('fe80:') || clean.startsWith('fe80%')) return true;
+  if (clean.startsWith('::ffff:')) {
+    const mapped = clean.slice('::ffff:'.length);
+    if (mapped.includes('.')) return isBlockedIpv4(mapped);
+    const hexMatch = mapped.match(/^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    if (hexMatch) {
+      const hi = parseInt(hexMatch[1], 16);
+      const lo = parseInt(hexMatch[2], 16);
+      const dotted = `${(hi >> 8) & 255}.${hi & 255}.${(lo >> 8) & 255}.${lo & 255}`;
+      return isBlockedIpv4(dotted);
+    }
+  }
+  return false;
+}
+
+export function isPrivateOrBlockedHost(
+  rawUrl: string,
+  opts?: { allowHttpInDev?: boolean },
+): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return true;
+  }
+
+  const protocol = parsed.protocol.toLowerCase();
+  const allowedHttp = opts?.allowHttpInDev === true;
+  if (protocol !== 'https:' && !(allowedHttp && protocol === 'http:')) {
+    return true;
+  }
+
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, '');
+  if (!host) return true;
+  if (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal')
+  ) {
+    return true;
+  }
+
+  if (isBlockedIpv4(host) || isBlockedIpv6(host)) {
+    return true;
+  }
+
+  return false;
 }
 
 export function extractYouTubeVideoId(rawUrl: string): string | null {
