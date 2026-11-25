@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart3,
+  Building2,
   CalendarClock,
   ExternalLink,
   Film,
@@ -10,8 +11,9 @@ import {
   Monitor,
   ShieldCheck,
 } from 'lucide-react';
-import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError, api } from '../lib/api';
+import { WorkspaceScopeBanner } from './WorkspaceScopeBanner';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 
@@ -46,6 +48,8 @@ export function AuthGuard() {
 export function AppShell() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const orgParam = searchParams.get('org');
   const { data } = useQuery({ queryKey: ['auth', 'me'], queryFn: api.me });
 
   const handleLogout = async () => {
@@ -56,6 +60,7 @@ export function AppShell() {
 
   const navItems = [
     { to: '/screens', label: 'Screens', icon: Monitor },
+    { to: '/sites', label: 'Sites & Profiles', icon: Building2 },
     { to: '/wall', label: 'Multi-Screen Wall', icon: LayoutGrid },
     { to: '/schedules', label: 'Schedules', icon: CalendarClock },
     { to: '/playlists', label: 'Playlists', icon: ListVideo },
@@ -63,6 +68,8 @@ export function AppShell() {
     { to: '/analytics', label: 'Analytics', icon: BarChart3 },
     { to: '/audit-logs', label: 'Audit Logs', icon: ShieldCheck },
   ];
+
+  const withScope = (to: string) => (orgParam ? `${to}?org=${encodeURIComponent(orgParam)}` : to);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -85,7 +92,7 @@ export function AppShell() {
             return (
               <NavLink
                 key={item.to}
-                to={item.to}
+                to={withScope(item.to)}
                 className={({ isActive }) =>
                   `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
@@ -123,6 +130,7 @@ export function AppShell() {
 
       <main className="flex-1 overflow-y-auto p-8">
         <div className="mx-auto max-w-6xl">
+          <WorkspaceScopeBanner />
           <Outlet />
         </div>
       </main>

@@ -1,12 +1,19 @@
 import type {
+  AgencyClientGrant,
   ApprovalStatus,
   AuditLog,
   AuthUser,
+  BulkProvisionResponse,
   CreateAppAsset,
+  CreateClientOrg,
+  CreateConfigProfile,
   CreatePlaylist,
   CreateSchedule,
   CreateScreenGroup,
+  CreateSite,
+  DeviceConfigProfile,
   MediaAsset,
+  Organization,
   PairClaimRequest,
   Playlist,
   PopReport,
@@ -14,15 +21,19 @@ import type {
   ProvisionScreenResponse,
   RemoteCommandType,
   Schedule,
+  ScheduleSimulationResponse,
   Screen,
   ScreenCommand,
   ScreenDetailResponse,
   ScreenGroup,
+  Site,
   UpdateMediaAsset,
+  UpdateOrg,
   UpdatePlaylist,
   UpdateSchedule,
   UpdateScreen,
   UpdateScreenGroup,
+  UpdateSite,
   UploadUrlRequest,
   UploadUrlResponse,
 } from '@signage/shared';
@@ -33,6 +44,16 @@ export class ApiError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+let activeTargetOrgId: string | null = null;
+
+export function setActiveTargetOrgId(orgId: string | null): void {
+  activeTargetOrgId = orgId && orgId.trim() ? orgId.trim() : null;
+}
+
+export function getActiveTargetOrgId(): string | null {
+  return activeTargetOrgId;
 }
 
 let refreshPromise: Promise<boolean> | null = null;
@@ -56,6 +77,9 @@ async function request<T>(path: string, init?: RequestInit, retried = false): Pr
   const headers = new Headers(init?.headers);
   if (init?.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
+  }
+  if (activeTargetOrgId && !path.startsWith('/auth/') && !path.startsWith('/orgs/')) {
+    headers.set('X-Target-Org-Id', activeTargetOrgId);
   }
 
   const res = await fetch(`/api/v1${path}`, {
@@ -218,6 +242,60 @@ export const api = {
 
   listAuditLogs: (q?: string) =>
     request<{ items: AuditLog[] }>(`/audit-logs${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+
+  getOrgMe: () => request<{ organization: Organization; grants: AgencyClientGrant[] }>('/orgs/me'),
+  updateOrgMe: (payload: UpdateOrg) =>
+    request<{ organization: Organization }>('/orgs/me', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  createClientOrg: (payload: CreateClientOrg) =>
+    request<{ organization: Organization; grant: AgencyClientGrant }>('/orgs/clients', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  listOrgGrants: () => request<{ items: AgencyClientGrant[] }>('/orgs/grants'),
+  updateOrgGrant: (id: string, status: 'active' | 'revoked') =>
+    request<{ grant: AgencyClientGrant }>(`/orgs/grants/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+
+  listSites: () => request<{ items: Site[] }>('/sites'),
+  createSite: (payload: CreateSite) =>
+    request<{ site: Site }>('/sites', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateSite: (id: string, payload: UpdateSite) =>
+    request<{ site: Site }>(`/sites/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteSite: (id: string) => request<{ ok: boolean }>(`/sites/${id}`, { method: 'DELETE' }),
+
+  listConfigProfiles: () => request<{ items: DeviceConfigProfile[] }>('/config-profiles'),
+  createConfigProfile: (payload: CreateConfigProfile) =>
+    request<{ profile: DeviceConfigProfile }>('/config-profiles', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  deleteConfigProfile: (id: string) =>
+    request<{ ok: boolean }>(`/config-profiles/${id}`, { method: 'DELETE' }),
+
+  bulkProvisionScreens: (csv: string) =>
+    request<BulkProvisionResponse>('/screens/provision/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ csv }),
+    }),
+  simulateScreenSchedule: (id: string, at?: string) =>
+    request<ScheduleSimulationResponse>(
+      `/screens/${id}/simulate${at ? `?at=${encodeURIComponent(at)}` : ''}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(at ? { at } : {}),
+      },
+    ),
 };
 
 export function formatBytes(bytes: number): string {

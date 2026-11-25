@@ -11,6 +11,7 @@ import { PlaylistsPage } from './pages/PlaylistsPage';
 import { SchedulesPage } from './pages/SchedulesPage';
 import { ScreenDetailPage } from './pages/ScreenDetailPage';
 import { ScreensPage } from './pages/ScreensPage';
+import { SitesPage } from './pages/SitesPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,6 +32,7 @@ export function App() {
               <Route path="/" element={<Navigate to="/screens" replace />} />
               <Route path="/screens" element={<ScreensPage />} />
               <Route path="/screens/:id" element={<ScreenDetailPage />} />
+              <Route path="/sites" element={<SitesPage />} />
               <Route path="/wall" element={<MultiScreenWallPage />} />
               <Route path="/schedules" element={<SchedulesPage />} />
               <Route path="/playlists" element={<PlaylistsPage />} />

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
+  CalendarSearch,
   Camera,
   ExternalLink,
   Monitor,
@@ -8,12 +9,15 @@ import {
   Power,
   RefreshCw,
   RotateCw,
+  ShieldAlert,
+  Sparkles,
   Wifi,
   WifiOff,
 } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import type { RemoteCommandType } from '@signage/shared';
+import { ScheduleSimulatorDrawer } from '../components/screens/ScheduleSimulatorDrawer';
 import { ScreenLayoutFormCard } from '../components/screens/ScreenLayoutFormCard';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -30,8 +34,20 @@ import { api } from '../lib/api';
 
 export function ScreenDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [pollingFast, setPollingFast] = useState(false);
+
+  const orgParam = searchParams.get('org');
+  const simOpen = searchParams.get('modal') === 'simulate';
+  const backUrl = orgParam ? `/screens?org=${encodeURIComponent(orgParam)}` : '/screens';
+
+  const setSimModal = (open: boolean) => {
+    const next = new URLSearchParams(searchParams);
+    if (open) next.set('modal', 'simulate');
+    else next.delete('modal');
+    setSearchParams(next);
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['screens', id],
@@ -71,16 +87,30 @@ export function ScreenDetailPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Button variant="outline" size="icon" asChild>
-            <Link to="/screens">
+            <Link to={backUrl}>
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
           <div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-2xl font-bold tracking-tight">{screen.name}</h1>
               <Badge variant={screen.status === 'online' ? 'success' : 'secondary'}>
                 {screen.status === 'online' ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
                 {screen.status}
+              </Badge>
+              {screen.playbackState && (
+                <Badge
+                  variant={
+                    screen.playbackState === 'safe_mode' || screen.playbackState === 'stalled'
+                      ? 'destructive'
+                      : 'outline'
+                  }
+                >
+                  {screen.playbackState}
+                </Badge>
+              )}
+              <Badge variant="outline" className="font-mono">
+                v{screen.manifestVersion ?? 0}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -89,7 +119,11 @@ export function ScreenDetailPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => setSimModal(true)}>
+            <CalendarSearch className="h-4 w-4" />
+            Simulate Schedule
+          </Button>
           <Button variant="outline" asChild>
             <a href={`/sim/?previewScreenId=${screen.id}&hud=1`} target="_blank" rel="noreferrer">
               <ExternalLink className="h-4 w-4" />
@@ -170,6 +204,22 @@ export function ScreenDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => commandMutation.mutate({ command: 'clear_quarantine' })}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Clear Quarantine
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => commandMutation.mutate({ command: 'exit_safe_mode' })}
+              >
+                <ShieldAlert className="h-3.5 w-3.5" />
+                Exit Safe Mode
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 className="col-span-2"
                 onClick={() => commandMutation.mutate({ command: 'reboot' })}
               >
@@ -197,6 +247,14 @@ export function ScreenDetailPage() {
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Resolution</dt>
                   <dd className="font-mono">{typeof hw.screen === 'string' ? hw.screen : '—'}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Sync Version</dt>
+                  <dd className="font-mono">v{screen.manifestVersion ?? 0}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Playback Health</dt>
+                  <dd className="font-mono">{screen.playbackState ?? 'unknown'}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Last Seen</dt>
@@ -258,6 +316,14 @@ export function ScreenDetailPage() {
           </TableBody>
         </Table>
       </Card>
+
+      <ScheduleSimulatorDrawer
+        open={simOpen}
+        screenId={screen.id}
+        screenName={screen.name}
+        timezone={screen.timezone}
+        onClose={() => setSimModal(false)}
+      />
     </div>
   );
 }

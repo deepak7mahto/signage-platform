@@ -1,17 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Eye,
-  FolderTree,
-  KeyRound,
-  Monitor,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Trash2,
-  Wifi,
-  WifiOff,
+  Eye, FileSpreadsheet, FolderTree, KeyRound, Monitor, Pencil, Plus, RefreshCw, Trash2, Wifi, WifiOff,
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { ImpactConfirmDialog } from '../components/ImpactConfirmDialog';
+import { BulkProvisionDialog } from '../components/screens/BulkProvisionDialog';
 import { EditScreenDialog } from '../components/screens/EditScreenDialog';
 import { PairScreenDialog } from '../components/screens/PairScreenDialog';
 import { ProvisionScreenDialog } from '../components/screens/ProvisionScreenDialog';
@@ -21,21 +14,8 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ListToolbar, PaginationBar, paginateItems } from '../components/ui/list-controls';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { api } from '../lib/api';
 
 const NONE_PLAYLIST_VALUE = '__none__';
@@ -48,6 +28,8 @@ export function ScreensPage() {
   const modalParam = searchParams.get('modal');
   const editGroupId = searchParams.get('editGroup');
   const editScreenId = searchParams.get('editScreen');
+  const revokeScreenId = searchParams.get('revokeScreen');
+  const orgParam = searchParams.get('org');
   const searchQuery = searchParams.get('q') ?? '';
   const statusFilter = searchParams.get('status') ?? 'all';
   const pageParam = searchParams.get('page');
@@ -71,11 +53,26 @@ export function ScreensPage() {
 
   const syncMutation = useMutation({ mutationFn: api.syncScreen });
 
+  const updateParams = (mutate: (next: URLSearchParams) => void, replace = false) => {
+    const next = new URLSearchParams(searchParams);
+    mutate(next);
+    setSearchParams(next, { replace });
+  };
+
+  const closeModals = () =>
+    updateParams((n) => {
+      n.delete('modal');
+      n.delete('editGroup');
+      n.delete('editScreen');
+      n.delete('revokeScreen');
+    });
+
   const deleteMutation = useMutation({
     mutationFn: api.deleteScreen,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['screens'] });
       queryClient.invalidateQueries({ queryKey: ['groups'] });
+      closeModals();
     },
   });
 
@@ -87,12 +84,6 @@ export function ScreensPage() {
     },
   });
 
-  const updateParams = (mutate: (next: URLSearchParams) => void, replace = false) => {
-    const next = new URLSearchParams(searchParams);
-    mutate(next);
-    setSearchParams(next, { replace });
-  };
-
   const setTab = (tab: 'screens' | 'groups') =>
     updateParams((n) => {
       if (tab === 'screens') n.delete('tab');
@@ -100,19 +91,13 @@ export function ScreensPage() {
       n.delete('page');
     });
 
-  const openModal = (modal: 'pair' | 'provision' | 'new-group') =>
+  const openModal = (modal: 'pair' | 'provision' | 'bulk' | 'new-group') =>
     updateParams((n) => {
       if (modal === 'new-group') n.set('tab', 'groups');
       n.set('modal', modal);
       n.delete('editGroup');
       n.delete('editScreen');
-    });
-
-  const closeModals = () =>
-    updateParams((n) => {
-      n.delete('modal');
-      n.delete('editGroup');
-      n.delete('editScreen');
+      n.delete('revokeScreen');
     });
 
   const screens = screensData?.items ?? [];
@@ -121,6 +106,7 @@ export function ScreensPage() {
   const screenNameById = new Map(screens.map((s) => [s.id, s.name]));
   const editingGroup = editGroupId ? (groups.find((g) => g.id === editGroupId) ?? null) : null;
   const editingScreen = editScreenId ? (screens.find((s) => s.id === editScreenId) ?? null) : null;
+  const revokingScreen = revokeScreenId ? (screens.find((s) => s.id === revokeScreenId) ?? null) : null;
 
   const qLower = searchQuery.trim().toLowerCase();
   const filteredScreens = screens.filter((s) => {
@@ -160,6 +146,10 @@ export function ScreensPage() {
             </Button>
           ) : (
             <>
+              <Button variant="outline" onClick={() => openModal('bulk')}>
+                <FileSpreadsheet className="h-4 w-4" />
+                Bulk CSV
+              </Button>
               <Button variant="outline" onClick={() => openModal('provision')}>
                 <KeyRound className="h-4 w-4" />
                 Pre-Provision (URL)
@@ -257,7 +247,10 @@ export function ScreensPage() {
                   {pagedScreens.pageItems.map((screen) => (
                     <TableRow key={screen.id}>
                       <TableCell>
-                        <Link to={`/screens/${screen.id}`} className="font-medium hover:underline">
+                        <Link
+                          to={orgParam ? `/screens/${screen.id}?org=${encodeURIComponent(orgParam)}` : `/screens/${screen.id}`}
+                          className="font-medium hover:underline"
+                        >
                           {screen.name}
                         </Link>
                         <div className="text-xs text-muted-foreground">
@@ -265,10 +258,20 @@ export function ScreensPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={screen.status === 'online' ? 'success' : 'secondary'}>
-                          {screen.status === 'online' ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-                          {screen.status}
-                        </Badge>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge variant={screen.status === 'online' ? 'success' : 'secondary'}>
+                            {screen.status === 'online' ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+                            {screen.status}
+                          </Badge>
+                          {screen.playbackState && (
+                            <Badge variant={screen.playbackState === 'safe_mode' || screen.playbackState === 'stalled' ? 'destructive' : 'outline'}>
+                              {screen.playbackState}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className="font-mono">
+                            v{screen.manifestVersion ?? 0}
+                          </Badge>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Select
@@ -304,25 +307,14 @@ export function ScreensPage() {
                               Preview
                             </a>
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            title="Edit screen"
-                            onClick={() => updateParams((n) => n.set('editScreen', screen.id))}
-                          >
+                          <Button variant="outline" size="icon" className="h-8 w-8" title="Edit screen" onClick={() => updateParams((n) => n.set('editScreen', screen.id))}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => syncMutation.mutate(screen.id)}>
                             <RefreshCw className="h-3.5 w-3.5" />
                             Sync
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteMutation.mutate(screen.id)}
-                            className="h-8 w-8 text-red-300 hover:bg-destructive/15"
-                          >
+                          <Button variant="ghost" size="icon" onClick={() => updateParams((n) => n.set('revokeScreen', screen.id))} className="h-8 w-8 text-red-300 hover:bg-destructive/15">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -367,12 +359,22 @@ export function ScreensPage() {
 
       <PairScreenDialog open={modalParam === 'pair'} playlists={playlists} onClose={closeModals} />
       <ProvisionScreenDialog open={modalParam === 'provision'} playlists={playlists} onClose={closeModals} />
+      <BulkProvisionDialog open={modalParam === 'bulk'} onClose={closeModals} />
       <EditScreenDialog screen={editingScreen} playlists={playlists} onClose={closeModals} />
       <ScreenGroupDialog
         open={modalParam === 'new-group' || Boolean(editGroupId)}
         editingGroup={editingGroup}
         screens={screens}
         onClose={closeModals}
+      />
+      <ImpactConfirmDialog
+        open={Boolean(revokeScreenId)}
+        title={`Revoke screen "${revokingScreen?.name ?? ''}"?`}
+        description="The device token will be revoked (410 DEVICE_REVOKED), disconnecting and unpairing this player immediately."
+        confirmLabel="Revoke Screen"
+        isPending={deleteMutation.isPending}
+        onCancel={closeModals}
+        onConfirm={() => revokeScreenId && deleteMutation.mutate(revokeScreenId)}
       />
     </div>
   );
