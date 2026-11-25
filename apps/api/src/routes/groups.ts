@@ -10,6 +10,7 @@ import { db } from '../db/index.js';
 import { auditLogs, schedules, screenGroupMembers, screenGroups, screens } from '../db/schema.js';
 import { pushToScreens } from '../ws/gateway.js';
 import { requireRole } from '../middleware/rbac.js';
+import { getEffectiveOrgId, resolveTenantScope } from '../middleware/tenant-scope.js';
 import { requireAuth } from './auth.js';
 
 async function loadGroupDto(groupRow: typeof screenGroups.$inferSelect): Promise<ScreenGroup> {
@@ -29,8 +30,8 @@ async function loadGroupDto(groupRow: typeof screenGroups.$inferSelect): Promise
 }
 
 export async function groupRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/api/v1/groups', { preHandler: requireAuth }, async (req) => {
-    const orgId = req.authUser!.orgId;
+  app.get('/api/v1/groups', { preHandler: [requireAuth, resolveTenantScope] }, async (req) => {
+    const orgId = getEffectiveOrgId(req);
     const rows = await db
       .select()
       .from(screenGroups)
@@ -43,7 +44,7 @@ export async function groupRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     '/api/v1/groups',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
     const parsed = CreateScreenGroupSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -51,13 +52,14 @@ export async function groupRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const user = req.authUser!;
+    const orgId = getEffectiveOrgId(req);
     const uniqueScreenIds = [...new Set(parsed.data.screenIds)];
 
     if (uniqueScreenIds.length > 0) {
       const owned = await db
         .select({ id: screens.id })
         .from(screens)
-        .where(and(eq(screens.orgId, user.orgId), inArray(screens.id, uniqueScreenIds)));
+        .where(and(eq(screens.orgId, orgId), inArray(screens.id, uniqueScreenIds)));
       if (owned.length !== uniqueScreenIds.length) {
         return reply.code(400).send({ error: 'One or more screens do not belong to org' });
       }
@@ -68,7 +70,7 @@ export async function groupRoutes(app: FastifyInstance): Promise<void> {
       .insert(screenGroups)
       .values({
         id: groupId,
-        orgId: user.orgId,
+        orgId,
         name: parsed.data.name,
         description: parsed.data.description ?? null,
       })
@@ -86,7 +88,7 @@ export async function groupRoutes(app: FastifyInstance): Promise<void> {
 
     await db.insert(auditLogs).values({
       id: crypto.randomUUID(),
-      orgId: user.orgId,
+      orgId,
       actorUserId: user.id,
       action: 'group.created',
       targetType: 'screen_group',
@@ -99,18 +101,18 @@ export async function groupRoutes(app: FastifyInstance): Promise<void> {
 
   app.put<{ Params: { id: string } }>(
     '/api/v1/groups/:id',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const parsed = UpdateScreenGroupSchema.safeParse(req.body);
       if (!parsed.success) {
         return reply.code(400).send({ error: 'Invalid group update', issues: parsed.error.issues });
       }
 
-      const user = req.authUser!;
+      const orgId = getEffectiveOrgId(req);
       const [existing] = await db
         .select()
         .from(screenGroups)
-        .where(and(eq(screenGroups.id, req.params.id), eq(screenGroups.orgId, user.orgId)))
+        .where(and(eq(screenGroups.id, req.params.id), eq(screenGroups.orgId, orgId)))
         .limit(1);
 
       if (!existing) {
@@ -129,7 +131,7 @@ export async function groupRoutes(app: FastifyInstance): Promise<void> {
           const owned = await db
             .select({ id: screens.id })
             .from(screens)
-            .where(and(eq(screens.orgId, user.orgId), inArray(screens.id, uniqueScreenIds)));
+            .where(and(eq(screens.orgId, orgId), inArray(screens.id, uniqueScreenIds)));
           if (owned.length !== uniqueScreenIds.length) {
             return reply.code(400).send({ error: 'One or more screens do not belong to org' });
           }
@@ -164,13 +166,13 @@ export async function groupRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string } }>(
     '/api/v1/groups/:id',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
-      const user = req.authUser!;
+      const orgId = getEffectiveOrgId(req);
       const [existing] = await db
         .select()
         .from(screenGroups)
-        .where(and(eq(screenGroups.id, req.params.id), eq(screenGroups.orgId, user.orgId)))
+        .where(and(eq(screenGroups.id, req.params.id), eq(screenGroups.orgId, orgId)))
         .limit(1);
 
       if (!existing) {
@@ -186,7 +188,7 @@ export async function groupRoutes(app: FastifyInstance): Promise<void> {
         .delete(schedules)
         .where(
           and(
-            eq(schedules.orgId, user.orgId),
+            eq(schedules.orgId, orgId),
             eq(schedules.targetType, 'group'),
             eq(schedules.targetId, existing.id),
           ),

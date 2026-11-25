@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, ilike, lt, or } from 'drizzle-orm';
 import {
   CompleteUploadRequestSchema,
   UpdateMediaApprovalSchema,
@@ -8,8 +8,10 @@ import {
   isBinaryMediaType,
   type MediaAsset,
 } from '@signage/shared';
+import { config } from '../config.js';
 import { db } from '../db/index.js';
 import { auditLogs, mediaAssets, playlistItems } from '../db/schema.js';
+import { encodeCursor, parseListQuery } from '../lib/pagination.js';
 import { enqueueMediaProcessing } from '../lib/queue.js';
 import {
   createPresignedGetUrl,
@@ -18,6 +20,7 @@ import {
   headS3Object,
 } from '../lib/s3.js';
 import { requireRole } from '../middleware/rbac.js';
+import { getEffectiveOrgId, resolveTenantScope } from '../middleware/tenant-scope.js';
 import { pushToScreensUsingPlaylist } from '../ws/gateway.js';
 import { requireAuth } from './auth.js';
 import { registerMediaAppRoutes } from './media-apps.js';
@@ -70,71 +73,119 @@ async function resolveAssetUrls(row: typeof mediaAssets.$inferSelect): Promise<{
 }
 
 export async function mediaRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/api/v1/media', { preHandler: requireAuth }, async (req) => {
-    const orgId = req.authUser!.orgId;
+  app.get('/api/v1/media', { preHandler: [requireAuth, resolveTenantScope] }, async (req) => {
+    const orgId = getEffectiveOrgId(req);
+    const { limit, cursor, q, status } = parseListQuery(req.query);
+
+    const conditions = [eq(mediaAssets.orgId, orgId)];
+    if (status) conditions.push(eq(mediaAssets.status, status));
+    if (q) conditions.push(ilike(mediaAssets.title, `%${q}%`));
+    if (cursor) {
+      const curDate = new Date(cursor.sortValue);
+      if (Number.isFinite(curDate.getTime())) {
+        conditions.push(
+          or(
+            lt(mediaAssets.createdAt, curDate),
+            and(eq(mediaAssets.createdAt, curDate), lt(mediaAssets.id, cursor.id)),
+          )!,
+        );
+      }
+    }
+
     const rows = await db
       .select()
       .from(mediaAssets)
-      .where(eq(mediaAssets.orgId, orgId))
-      .orderBy(desc(mediaAssets.createdAt));
+      .where(and(...conditions))
+      .orderBy(desc(mediaAssets.createdAt), desc(mediaAssets.id))
+      .limit(limit + 1);
 
+    const hasMore = rows.length > limit;
+    const slice = hasMore ? rows.slice(0, limit) : rows;
     const items = await Promise.all(
-      rows.map(async (row) => {
+      slice.map(async (row) => {
         const { previewUrl, thumbnailUrl } = await resolveAssetUrls(row);
         return toMediaAssetDto(row, previewUrl, thumbnailUrl);
       }),
     );
 
-    return { items };
+    const lastRow = slice[slice.length - 1];
+    const nextCursor =
+      hasMore && lastRow
+        ? encodeCursor({ sortValue: lastRow.createdAt.toISOString(), id: lastRow.id })
+        : null;
+
+    return { items, nextCursor, hasMore };
   });
+
+  app.get<{ Params: { sha256: string }; Querystring: { exp?: string; sig?: string } }>(
+    '/api/v1/media/blobs/:sha256/verify',
+    async (req, reply) => {
+      const exp = Number(req.query?.exp ?? '0');
+      const sig = req.query?.sig ?? '';
+      if (!Number.isFinite(exp) || exp * 1000 < Date.now() || !sig) {
+        return reply.code(403).send({ error: 'Expired or missing blob signature' });
+      }
+      const expected = crypto
+        .createHmac('sha256', config.BLOB_HMAC_SECRET)
+        .update(`${req.params.sha256}:${exp}`)
+        .digest('hex');
+      const a = Buffer.from(sig);
+      const b = Buffer.from(expected);
+      if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        return reply.code(403).send({ error: 'Invalid blob signature' });
+      }
+      return { ok: true };
+    },
+  );
 
   app.post(
     '/api/v1/media/upload-url',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
-    const parsed = UploadUrlRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: 'Invalid upload request', issues: parsed.error.issues });
-    }
+      const parsed = UploadUrlRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ error: 'Invalid upload request', issues: parsed.error.issues });
+      }
 
-    const { title, filename, mimeType, sizeBytes } = parsed.data;
-    const isVideo = mimeType.startsWith('video/');
-    const isImage = mimeType.startsWith('image/');
+      const { title, filename, mimeType, sizeBytes } = parsed.data;
+      const isVideo = mimeType.startsWith('video/');
+      const isImage = mimeType.startsWith('image/');
 
-    if (!isVideo && !isImage) {
-      return reply.code(400).send({ error: 'Only video/* and image/* MIME types are supported' });
-    }
+      if (!isVideo && !isImage) {
+        return reply.code(400).send({ error: 'Only video/* and image/* MIME types are supported' });
+      }
 
-    const user = req.authUser!;
-    const assetId = crypto.randomUUID();
-    const safeName = sanitizeFilename(filename);
-    const objectKey = `${user.orgId}/${assetId}/${safeName}`;
+      const orgId = getEffectiveOrgId(req);
+      const assetId = crypto.randomUUID();
+      const safeName = sanitizeFilename(filename);
+      const objectKey = `${orgId}/${assetId}/${safeName}`;
 
-    const [created] = await db
-      .insert(mediaAssets)
-      .values({
-        id: assetId,
-        orgId: user.orgId,
-        title,
-        type: isVideo ? 'video' : 'image',
-        mimeType,
-        status: 'uploading',
-        objectKey,
-        sizeBytes,
-      })
-      .returning();
+      const [created] = await db
+        .insert(mediaAssets)
+        .values({
+          id: assetId,
+          orgId,
+          title,
+          type: isVideo ? 'video' : 'image',
+          mimeType,
+          status: 'uploading',
+          objectKey,
+          sizeBytes,
+        })
+        .returning();
 
-    const uploadUrl = await createPresignedPutUrl(objectKey, mimeType, 900);
+      const uploadUrl = await createPresignedPutUrl(objectKey, mimeType, 900);
 
-    return {
-      asset: toMediaAssetDto(created, null),
-      uploadUrl,
-    };
-  });
+      return {
+        asset: toMediaAssetDto(created, null),
+        uploadUrl,
+      };
+    },
+  );
 
   app.post<{ Params: { id: string } }>(
     '/api/v1/media/:id/complete',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const parsed = CompleteUploadRequestSchema.safeParse(req.body ?? {});
       if (!parsed.success) {
@@ -142,10 +193,11 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
       }
 
       const user = req.authUser!;
+      const orgId = getEffectiveOrgId(req);
       const [existing] = await db
         .select()
         .from(mediaAssets)
-        .where(and(eq(mediaAssets.id, req.params.id), eq(mediaAssets.orgId, user.orgId)))
+        .where(and(eq(mediaAssets.id, req.params.id), eq(mediaAssets.orgId, orgId)))
         .limit(1);
 
       if (!existing) {
@@ -169,7 +221,7 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
 
         await db.insert(auditLogs).values({
           id: crypto.randomUUID(),
-          orgId: user.orgId,
+          orgId,
           actorUserId: user.id,
           action: 'media.uploaded',
           targetType: 'media_asset',
@@ -191,13 +243,14 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string } }>(
     '/api/v1/media/:id',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const user = req.authUser!;
+      const orgId = getEffectiveOrgId(req);
       const [existing] = await db
         .select()
         .from(mediaAssets)
-        .where(and(eq(mediaAssets.id, req.params.id), eq(mediaAssets.orgId, user.orgId)))
+        .where(and(eq(mediaAssets.id, req.params.id), eq(mediaAssets.orgId, orgId)))
         .limit(1);
 
       if (!existing) {
@@ -219,7 +272,7 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
 
       await db.insert(auditLogs).values({
         id: crypto.randomUUID(),
-        orgId: user.orgId,
+        orgId,
         actorUserId: user.id,
         action: 'media.deleted',
         targetType: 'media_asset',
@@ -233,13 +286,10 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch<{ Params: { id: string } }>(
     '/api/v1/media/:id/approval',
-    { preHandler: [requireAuth, requireRole('owner', 'admin')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin')] },
     async (req, reply) => {
       const user = req.authUser!;
-      if (user.role !== 'owner' && user.role !== 'admin') {
-        return reply.code(403).send({ error: 'Only owners or admins can approve/reject media' });
-      }
-
+      const orgId = getEffectiveOrgId(req);
       const parsed = UpdateMediaApprovalSchema.safeParse(req.body);
       if (!parsed.success) {
         return reply.code(400).send({ error: 'Invalid approval payload', issues: parsed.error.issues });
@@ -248,7 +298,7 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
       const [existing] = await db
         .select()
         .from(mediaAssets)
-        .where(and(eq(mediaAssets.id, req.params.id), eq(mediaAssets.orgId, user.orgId)))
+        .where(and(eq(mediaAssets.id, req.params.id), eq(mediaAssets.orgId, orgId)))
         .limit(1);
 
       if (!existing) {
@@ -263,7 +313,7 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
 
       await db.insert(auditLogs).values({
         id: crypto.randomUUID(),
-        orgId: user.orgId,
+        orgId,
         actorUserId: user.id,
         action: `media.approval.${parsed.data.approvalStatus}`,
         targetType: 'media_asset',

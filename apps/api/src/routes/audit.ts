@@ -3,11 +3,12 @@ import { desc, eq } from 'drizzle-orm';
 import type { AuditLog } from '@signage/shared';
 import { db } from '../db/index.js';
 import { auditLogs, users } from '../db/schema.js';
+import { getEffectiveOrgId, resolveTenantScope } from '../middleware/tenant-scope.js';
 import { requireAuth } from './auth.js';
 
 export async function auditRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/api/v1/audit-logs', { preHandler: requireAuth }, async (req) => {
-    const orgId = req.authUser!.orgId;
+  app.get('/api/v1/audit-logs', { preHandler: [requireAuth, resolveTenantScope] }, async (req) => {
+    const orgId = getEffectiveOrgId(req);
     const q =
       typeof req.query === 'object' && req.query !== null && 'q' in req.query
         ? String((req.query as Record<string, unknown>).q).trim().toLowerCase()

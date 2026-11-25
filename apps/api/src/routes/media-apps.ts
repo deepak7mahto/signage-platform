@@ -16,6 +16,7 @@ import { auditLogs, mediaAssets, playlistItems } from '../db/schema.js';
 import { sha256Hex } from '../lib/crypto.js';
 import { createPresignedGetUrl } from '../lib/s3.js';
 import { requireRole } from '../middleware/rbac.js';
+import { getEffectiveOrgId, resolveTenantScope } from '../middleware/tenant-scope.js';
 import { pushToScreensUsingPlaylist } from '../ws/gateway.js';
 import { requireAuth } from './auth.js';
 
@@ -40,7 +41,7 @@ export function registerMediaAppRoutes(
 ): void {
   app.post(
     '/api/v1/media/app',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const parsed = CreateAppAssetSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -48,6 +49,7 @@ export function registerMediaAppRoutes(
       }
 
       const user = req.authUser!;
+      const orgId = getEffectiveOrgId(req);
       const { title, type, durationMs, appConfig } = parsed.data;
       const checked = validateCreativeConfig(type, appConfig);
       if (!checked.ok) {
@@ -63,7 +65,7 @@ export function registerMediaAppRoutes(
       .insert(mediaAssets)
       .values({
         id,
-        orgId: user.orgId,
+        orgId,
         title,
         type,
         mimeType: 'application/x-signage-app',
@@ -79,7 +81,7 @@ export function registerMediaAppRoutes(
 
     await db.insert(auditLogs).values({
       id: crypto.randomUUID(),
-      orgId: user.orgId,
+      orgId,
       actorUserId: user.id,
       action: 'media.app_created',
       targetType: 'media_asset',
@@ -94,7 +96,7 @@ export function registerMediaAppRoutes(
 
   app.patch<{ Params: { id: string } }>(
     '/api/v1/media/:id',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const parsed = UpdateMediaAssetSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -102,10 +104,11 @@ export function registerMediaAppRoutes(
       }
 
       const user = req.authUser!;
+      const orgId = getEffectiveOrgId(req);
       const [existing] = await db
         .select()
         .from(mediaAssets)
-        .where(and(eq(mediaAssets.id, req.params.id), eq(mediaAssets.orgId, user.orgId)))
+        .where(and(eq(mediaAssets.id, req.params.id), eq(mediaAssets.orgId, orgId)))
         .limit(1);
       if (!existing) return reply.code(404).send({ error: 'Media asset not found' });
 

@@ -16,9 +16,11 @@ import { deviceRoutes } from './routes/device.js';
 import { groupRoutes } from './routes/groups.js';
 import { healthRoutes } from './routes/health.js';
 import { mediaRoutes } from './routes/media.js';
+import { orgRoutes } from './routes/orgs.js';
 import { playlistRoutes } from './routes/playlists.js';
 import { scheduleRoutes } from './routes/schedules.js';
 import { screenRoutes } from './routes/screens.js';
+import { siteRoutes } from './routes/sites.js';
 
 async function main() {
   const app = Fastify({
@@ -58,6 +60,8 @@ async function main() {
 
   await app.register(healthRoutes);
   await app.register(authRoutes);
+  await app.register(orgRoutes);
+  await app.register(siteRoutes);
   await app.register(mediaRoutes);
   await app.register(playlistRoutes);
   await app.register(screenRoutes);

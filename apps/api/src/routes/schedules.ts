@@ -10,6 +10,7 @@ import { db } from '../db/index.js';
 import { auditLogs, playlists, schedules, screenGroups, screens } from '../db/schema.js';
 import { pushToGroup, pushToScreen } from '../ws/gateway.js';
 import { requireRole } from '../middleware/rbac.js';
+import { getEffectiveOrgId, resolveTenantScope } from '../middleware/tenant-scope.js';
 import { requireAuth } from './auth.js';
 
 async function validateTarget(
@@ -84,8 +85,8 @@ async function toScheduleDto(row: typeof schedules.$inferSelect): Promise<Schedu
 }
 
 export async function scheduleRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/api/v1/schedules', { preHandler: requireAuth }, async (req) => {
-    const orgId = req.authUser!.orgId;
+  app.get('/api/v1/schedules', { preHandler: [requireAuth, resolveTenantScope] }, async (req) => {
+    const orgId = getEffectiveOrgId(req);
     const rows = await db
       .select()
       .from(schedules)
@@ -98,89 +99,102 @@ export async function scheduleRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     '/api/v1/schedules',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
-    const parsed = CreateScheduleSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: 'Invalid schedule payload', issues: parsed.error.issues });
-    }
+      const parsed = CreateScheduleSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ error: 'Invalid schedule payload', issues: parsed.error.issues });
+      }
 
-    const user = req.authUser!;
-    const data = parsed.data;
+      const user = req.authUser!;
+      const orgId = getEffectiveOrgId(req);
+      const data = parsed.data;
+      if (req.tenantScope?.orgType === 'client' && !req.tenantScope.isDelegated && data.priority >= 500) {
+        return reply.code(403).send({
+          error: 'Agency priority tier (>= 500) is reserved for agency operators',
+        });
+      }
 
-    const [pl] = await db
-      .select({ id: playlists.id })
-      .from(playlists)
-      .where(and(eq(playlists.id, data.playlistId), eq(playlists.orgId, user.orgId)))
-      .limit(1);
-    if (!pl) {
-      return reply.code(400).send({ error: 'Playlist not found' });
-    }
+      const [pl] = await db
+        .select({ id: playlists.id })
+        .from(playlists)
+        .where(and(eq(playlists.id, data.playlistId), eq(playlists.orgId, orgId)))
+        .limit(1);
+      if (!pl) {
+        return reply.code(400).send({ error: 'Playlist not found' });
+      }
 
-    const targetName = await validateTarget(user.orgId, data.targetType, data.targetId);
-    if (!targetName) {
-      return reply.code(400).send({ error: 'Target screen or group not found' });
-    }
+      const targetName = await validateTarget(orgId, data.targetType, data.targetId);
+      if (!targetName) {
+        return reply.code(400).send({ error: 'Target screen or group not found' });
+      }
 
-    const scheduleId = crypto.randomUUID();
-    const [created] = await db
-      .insert(schedules)
-      .values({
-        id: scheduleId,
-        orgId: user.orgId,
-        name: data.name,
-        playlistId: data.playlistId,
-        targetType: data.targetType,
-        targetId: data.targetId,
-        priority: data.priority,
-        daysOfWeek: data.daysOfWeek,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        validFrom: data.validFrom ?? null,
-        validUntil: data.validUntil ?? null,
-        enabled: data.enabled,
-      })
-      .returning();
+      const scheduleId = crypto.randomUUID();
+      const [created] = await db
+        .insert(schedules)
+        .values({
+          id: scheduleId,
+          orgId,
+          name: data.name,
+          playlistId: data.playlistId,
+          targetType: data.targetType,
+          targetId: data.targetId,
+          priority: data.priority,
+          daysOfWeek: data.daysOfWeek,
+          startTime: data.startTime,
+          endTime: data.endTime,
+          validFrom: data.validFrom ?? null,
+          validUntil: data.validUntil ?? null,
+          enabled: data.enabled,
+        })
+        .returning();
 
-    await db.insert(auditLogs).values({
-      id: crypto.randomUUID(),
-      orgId: user.orgId,
-      actorUserId: user.id,
-      action: 'schedule.created',
-      targetType: 'schedule',
-      targetId: scheduleId,
-      metadata: { name: created.name, targetType: created.targetType, targetId: created.targetId },
-    });
+      await db.insert(auditLogs).values({
+        id: crypto.randomUUID(),
+        orgId,
+        actorUserId: user.id,
+        action: 'schedule.created',
+        targetType: 'schedule',
+        targetId: scheduleId,
+        metadata: { name: created.name, targetType: created.targetType, targetId: created.targetId },
+      });
 
-    await notifyTarget(created.targetType, created.targetId, 'schedule_created');
-    return reply.code(201).send({ schedule: await toScheduleDto(created) });
-  });
+      await notifyTarget(created.targetType, created.targetId, 'schedule_created');
+      return reply.code(201).send({ schedule: await toScheduleDto(created) });
+    },
+  );
 
   app.patch<{ Params: { id: string } }>(
     '/api/v1/schedules/:id',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const parsed = UpdateScheduleSchema.safeParse(req.body);
       if (!parsed.success) {
         return reply.code(400).send({ error: 'Invalid schedule update', issues: parsed.error.issues });
       }
 
-      const user = req.authUser!;
+      const orgId = getEffectiveOrgId(req);
       const [existing] = await db
         .select()
         .from(schedules)
-        .where(and(eq(schedules.id, req.params.id), eq(schedules.orgId, user.orgId)))
+        .where(and(eq(schedules.id, req.params.id), eq(schedules.orgId, orgId)))
         .limit(1);
 
       if (!existing) {
         return reply.code(404).send({ error: 'Schedule not found' });
       }
 
+      if (req.tenantScope?.orgType === 'client' && !req.tenantScope.isDelegated && existing.priority >= 500) {
+        return reply.code(403).send({
+          error: 'Agency-managed schedules (priority >= 500) are read-only for client workspaces',
+        });
+      }
+
       const nextPlaylistId = parsed.data.playlistId ?? existing.playlistId;
       const [pl] = await db
         .select({ id: playlists.id })
         .from(playlists)
-        .where(and(eq(playlists.id, nextPlaylistId), eq(playlists.orgId, user.orgId)))
+        .where(and(eq(playlists.id, nextPlaylistId), eq(playlists.orgId, orgId)))
         .limit(1);
       if (!pl) {
         return reply.code(400).send({ error: 'Playlist not found' });
@@ -188,7 +202,7 @@ export async function scheduleRoutes(app: FastifyInstance): Promise<void> {
 
       const nextTargetType = (parsed.data.targetType ?? existing.targetType) as 'screen' | 'group';
       const nextTargetId = parsed.data.targetId ?? existing.targetId;
-      const targetName = await validateTarget(user.orgId, nextTargetType, nextTargetId);
+      const targetName = await validateTarget(orgId, nextTargetType, nextTargetId);
       if (!targetName) {
         return reply.code(400).send({ error: 'Target screen or group not found' });
       }
@@ -225,17 +239,22 @@ export async function scheduleRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string } }>(
     '/api/v1/schedules/:id',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
-      const user = req.authUser!;
+      const orgId = getEffectiveOrgId(req);
       const [existing] = await db
         .select()
         .from(schedules)
-        .where(and(eq(schedules.id, req.params.id), eq(schedules.orgId, user.orgId)))
+        .where(and(eq(schedules.id, req.params.id), eq(schedules.orgId, orgId)))
         .limit(1);
 
       if (!existing) {
         return reply.code(404).send({ error: 'Schedule not found' });
+      }
+      if (req.tenantScope?.orgType === 'client' && !req.tenantScope.isDelegated && existing.priority >= 500) {
+        return reply.code(403).send({
+          error: 'Agency-managed schedules (priority >= 500) are read-only for client workspaces',
+        });
       }
 
       await db.delete(schedules).where(eq(schedules.id, existing.id));

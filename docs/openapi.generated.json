@@ -87,6 +87,240 @@
         }
       }
     },
+    "/api/v1/orgs/me": {
+      "get": {
+        "summary": "Current Organization & Client Grants",
+        "responses": {
+          "200": {
+            "description": "Org context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organization"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update Organization Settings",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrg"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated org",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organization"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orgs/clients": {
+      "post": {
+        "summary": "Create Client Workspace Under Agency",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClientOrg"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created client",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organization"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orgs/grants": {
+      "get": {
+        "summary": "List Agency Client Grants",
+        "responses": {
+          "200": {
+            "description": "Grants list"
+          }
+        }
+      }
+    },
+    "/api/v1/orgs/grants/{id}": {
+      "patch": {
+        "summary": "Activate or Revoke Agency Client Grant",
+        "responses": {
+          "200": {
+            "description": "Updated grant"
+          }
+        }
+      }
+    },
+    "/api/v1/sites": {
+      "get": {
+        "summary": "List Sites",
+        "responses": {
+          "200": {
+            "description": "Sites",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Site"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Site",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Site",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sites/{id}": {
+      "patch": {
+        "summary": "Update Site",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Site",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Site",
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/api/v1/config-profiles": {
+      "get": {
+        "summary": "List Device Config Profiles",
+        "responses": {
+          "200": {
+            "description": "Profiles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DeviceConfigProfile"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Device Config Profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConfigProfile"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceConfigProfile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/config-profiles/{id}": {
+      "delete": {
+        "summary": "Delete Device Config Profile",
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
     "/api/v1/media": {
       "get": {
         "summary": "List Media Assets",
@@ -412,6 +646,40 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProvisionScreenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/provision/bulk": {
+      "post": {
+        "summary": "Bulk CSV Screen Provisioning (Max 1000)",
+        "responses": {
+          "201": {
+            "description": "Bulk provision result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkProvisionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/{id}/simulate": {
+      "post": {
+        "summary": "Dry-Run Schedule Simulation at Timestamp",
+        "responses": {
+          "200": {
+            "description": "Simulation trace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleSimulationResponse"
                 }
               }
             }
@@ -885,6 +1153,50 @@
   },
   "components": {
     "schemas": {
+      "AgencyClientGrant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "agencyOrgId": {
+            "type": "string"
+          },
+          "clientOrgId": {
+            "type": "string"
+          },
+          "clientName": {
+            "type": "string"
+          },
+          "clientSlug": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "revoked"
+            ]
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "agencyOrgId",
+          "clientOrgId",
+          "status",
+          "permissions",
+          "createdAt"
+        ]
+      },
       "AppConfig": {
         "type": "object",
         "additionalProperties": {}
@@ -976,6 +1288,85 @@
           "email",
           "name",
           "role"
+        ]
+      },
+      "BulkProvisionResponse": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "succeeded": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rowNumber": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "ok": {
+                  "type": "boolean"
+                },
+                "screenId": {
+                  "type": "string"
+                },
+                "provisionToken": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "rowNumber",
+                "name",
+                "ok"
+              ]
+            }
+          }
+        },
+        "required": [
+          "total",
+          "succeeded",
+          "failed",
+          "results"
+        ]
+      },
+      "BulkProvisionRowResult": {
+        "type": "object",
+        "properties": {
+          "rowNumber": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "screenId": {
+            "type": "string"
+          },
+          "provisionToken": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rowNumber",
+          "name",
+          "ok"
         ]
       },
       "ClaimProvisionRequest": {
@@ -1140,6 +1531,41 @@
           "appConfig"
         ]
       },
+      "CreateClientOrg": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "CreateConfigProfile": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "config": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
       "CreatePlaylist": {
         "type": "object",
         "properties": {
@@ -1244,6 +1670,39 @@
           "name"
         ]
       },
+      "CreateSite": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "lanCacheUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "alertPolicy": {
+            "type": "object",
+            "properties": {
+              "webhookUrl": {
+                "type": "string"
+              },
+              "webhookSecret": {
+                "type": "string"
+              },
+              "offlinePercentThreshold": {
+                "type": "number"
+              }
+            },
+            "nullable": true
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
       "CreativeConfig": {
         "type": "object",
         "additionalProperties": {}
@@ -1258,6 +1717,34 @@
           "reboot",
           "volume",
           "apk_ota"
+        ]
+      },
+      "DeviceConfigProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "orgId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "config": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orgId",
+          "name",
+          "config",
+          "createdAt"
         ]
       },
       "DeviceManifest": {
@@ -2137,6 +2624,50 @@
       },
       "MediaType": {
         "type": "string"
+      },
+      "OrgType": {
+        "type": "string",
+        "enum": [
+          "standalone",
+          "agency",
+          "client"
+        ]
+      },
+      "Organization": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "orgType": {
+            "type": "string",
+            "enum": [
+              "standalone",
+              "agency",
+              "client"
+            ]
+          },
+          "quotas": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "orgType",
+          "createdAt"
+        ]
       },
       "Orientation": {
         "type": "string",
@@ -3271,6 +3802,110 @@
           "updatedAt"
         ]
       },
+      "ScheduleSimulationResponse": {
+        "type": "object",
+        "properties": {
+          "screenId": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "winningPlaylistId": {
+            "type": "string",
+            "nullable": true
+          },
+          "winningPlaylistName": {
+            "type": "string",
+            "nullable": true
+          },
+          "winningScheduleName": {
+            "type": "string",
+            "nullable": true
+          },
+          "itemCount": {
+            "type": "integer"
+          },
+          "trace": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "scheduleId": {
+                  "type": "string"
+                },
+                "scheduleName": {
+                  "type": "string"
+                },
+                "playlistId": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "integer"
+                },
+                "matched": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "scheduleId",
+                "scheduleName",
+                "playlistId",
+                "priority",
+                "matched",
+                "reason"
+              ]
+            }
+          }
+        },
+        "required": [
+          "screenId",
+          "at",
+          "timezone",
+          "winningPlaylistId",
+          "winningPlaylistName",
+          "winningScheduleName",
+          "itemCount",
+          "trace"
+        ]
+      },
+      "ScheduleSimulationTraceItem": {
+        "type": "object",
+        "properties": {
+          "scheduleId": {
+            "type": "string"
+          },
+          "scheduleName": {
+            "type": "string"
+          },
+          "playlistId": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "matched": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheduleId",
+          "scheduleName",
+          "playlistId",
+          "priority",
+          "matched",
+          "reason"
+        ]
+      },
       "ScheduleTargetType": {
         "type": "string",
         "enum": [
@@ -4280,6 +4915,53 @@
           }
         ]
       },
+      "Site": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "orgId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "lanCacheUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "alertPolicy": {
+            "type": "object",
+            "properties": {
+              "webhookUrl": {
+                "type": "string"
+              },
+              "webhookSecret": {
+                "type": "string"
+              },
+              "offlinePercentThreshold": {
+                "type": "number"
+              }
+            },
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orgId",
+          "name",
+          "timezone",
+          "lanCacheUrl",
+          "createdAt"
+        ]
+      },
       "SyncMode": {
         "type": "string",
         "enum": [
@@ -4325,6 +5007,21 @@
             "type": "object",
             "additionalProperties": {},
             "nullable": true
+          }
+        }
+      },
+      "UpdateOrg": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "orgType": {
+            "type": "string",
+            "enum": [
+              "standalone",
+              "agency"
+            ]
           }
         }
       },
@@ -4547,6 +5244,36 @@
           },
           "programmaticFillUrl": {
             "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "UpdateSite": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "lanCacheUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "alertPolicy": {
+            "type": "object",
+            "properties": {
+              "webhookUrl": {
+                "type": "string"
+              },
+              "webhookSecret": {
+                "type": "string"
+              },
+              "offlinePercentThreshold": {
+                "type": "number"
+              }
+            },
             "nullable": true
           }
         }

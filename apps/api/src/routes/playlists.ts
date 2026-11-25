@@ -13,6 +13,7 @@ import { auditLogs, mediaAssets, playlistItems, playlists } from '../db/schema.j
 import { createPresignedGetUrl } from '../lib/s3.js';
 import { pushToScreensUsingPlaylist } from '../ws/gateway.js';
 import { requireRole } from '../middleware/rbac.js';
+import { getEffectiveOrgId, resolveTenantScope } from '../middleware/tenant-scope.js';
 import { requireAuth } from './auth.js';
 
 async function loadPlaylistWithItems(playlistRow: typeof playlists.$inferSelect): Promise<Playlist> {
@@ -74,8 +75,8 @@ async function loadPlaylistWithItems(playlistRow: typeof playlists.$inferSelect)
 }
 
 export async function playlistRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/api/v1/playlists', { preHandler: requireAuth }, async (req) => {
-    const orgId = req.authUser!.orgId;
+  app.get('/api/v1/playlists', { preHandler: [requireAuth, resolveTenantScope] }, async (req) => {
+    const orgId = getEffectiveOrgId(req);
     const rows = await db
       .select()
       .from(playlists)
@@ -88,12 +89,13 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
 
   app.get<{ Params: { id: string } }>(
     '/api/v1/playlists/:id',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, resolveTenantScope] },
     async (req, reply) => {
+      const orgId = getEffectiveOrgId(req);
       const [row] = await db
         .select()
         .from(playlists)
-        .where(and(eq(playlists.id, req.params.id), eq(playlists.orgId, req.authUser!.orgId)))
+        .where(and(eq(playlists.id, req.params.id), eq(playlists.orgId, orgId)))
         .limit(1);
 
       if (!row) {
@@ -106,7 +108,7 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     '/api/v1/playlists',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
     const parsed = CreatePlaylistSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -114,6 +116,7 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const user = req.authUser!;
+    const orgId = getEffectiveOrgId(req);
     const playlistId = crypto.randomUUID();
 
     if (parsed.data.items.length > 0) {
@@ -121,7 +124,7 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
       const ownedAssets = await db
         .select({ id: mediaAssets.id })
         .from(mediaAssets)
-        .where(and(eq(mediaAssets.orgId, user.orgId), inArray(mediaAssets.id, assetIds)));
+        .where(and(eq(mediaAssets.orgId, orgId), inArray(mediaAssets.id, assetIds)));
       if (ownedAssets.length !== assetIds.length) {
         return reply.code(400).send({ error: 'One or more media assets do not belong to org' });
       }
@@ -131,7 +134,7 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
       .insert(playlists)
       .values({
         id: playlistId,
-        orgId: user.orgId,
+        orgId,
         name: parsed.data.name,
         description: parsed.data.description ?? null,
         version: 1,
@@ -152,7 +155,7 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
 
     await db.insert(auditLogs).values({
       id: crypto.randomUUID(),
-      orgId: user.orgId,
+      orgId,
       actorUserId: user.id,
       action: 'playlist.created',
       targetType: 'playlist',
@@ -165,7 +168,7 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
 
   app.put<{ Params: { id: string } }>(
     '/api/v1/playlists/:id',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const parsed = UpdatePlaylistSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -173,10 +176,11 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
       }
 
       const user = req.authUser!;
+      const orgId = getEffectiveOrgId(req);
       const [existing] = await db
         .select()
         .from(playlists)
-        .where(and(eq(playlists.id, req.params.id), eq(playlists.orgId, user.orgId)))
+        .where(and(eq(playlists.id, req.params.id), eq(playlists.orgId, orgId)))
         .limit(1);
 
       if (!existing) {
@@ -188,7 +192,7 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
         const ownedAssets = await db
           .select({ id: mediaAssets.id })
           .from(mediaAssets)
-          .where(and(eq(mediaAssets.orgId, user.orgId), inArray(mediaAssets.id, assetIds)));
+          .where(and(eq(mediaAssets.orgId, orgId), inArray(mediaAssets.id, assetIds)));
         if (ownedAssets.length !== assetIds.length) {
           return reply.code(400).send({ error: 'One or more media assets do not belong to org' });
         }
@@ -223,7 +227,7 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
 
       await db.insert(auditLogs).values({
         id: crypto.randomUUID(),
-        orgId: user.orgId,
+        orgId,
         actorUserId: user.id,
         action: 'playlist.updated',
         targetType: 'playlist',
@@ -239,13 +243,13 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string } }>(
     '/api/v1/playlists/:id',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
-      const user = req.authUser!;
+      const orgId = getEffectiveOrgId(req);
       const [existing] = await db
         .select()
         .from(playlists)
-        .where(and(eq(playlists.id, req.params.id), eq(playlists.orgId, user.orgId)))
+        .where(and(eq(playlists.id, req.params.id), eq(playlists.orgId, orgId)))
         .limit(1);
 
       if (!existing) {

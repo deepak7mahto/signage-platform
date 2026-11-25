@@ -6,13 +6,14 @@ import { db } from '../db/index.js';
 import { auditLogs, pairingCodes, playlists, screens } from '../db/schema.js';
 import { generateOpaqueToken, sha256Hex } from '../lib/crypto.js';
 import { requireRole } from '../middleware/rbac.js';
+import { getEffectiveOrgId, resolveTenantScope } from '../middleware/tenant-scope.js';
 import { requireAuth } from './auth.js';
 import { toScreenDto } from './screen-dto.js';
 
 export function registerScreenProvisioningRoutes(app: FastifyInstance): void {
   app.post(
     '/api/v1/screens/pair',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'ops')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'ops')] },
     async (req, reply) => {
     const parsed = PairClaimRequestSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -20,6 +21,7 @@ export function registerScreenProvisioningRoutes(app: FastifyInstance): void {
     }
 
     const user = req.authUser!;
+    const orgId = getEffectiveOrgId(req);
     const { code, name, location, timezone, activePlaylistId } = parsed.data;
 
     const [pairing] = await db
@@ -42,7 +44,7 @@ export function registerScreenProvisioningRoutes(app: FastifyInstance): void {
       const [pl] = await db
         .select({ id: playlists.id })
         .from(playlists)
-        .where(and(eq(playlists.id, activePlaylistId), eq(playlists.orgId, user.orgId)))
+        .where(and(eq(playlists.id, activePlaylistId), eq(playlists.orgId, orgId)))
         .limit(1);
       if (!pl) {
         return reply.code(400).send({ error: 'Assigned playlist not found' });
@@ -57,7 +59,7 @@ export function registerScreenProvisioningRoutes(app: FastifyInstance): void {
       .insert(screens)
       .values({
         id: screenId,
-        orgId: user.orgId,
+        orgId,
         name,
         location: location ?? null,
         timezone,
@@ -74,7 +76,7 @@ export function registerScreenProvisioningRoutes(app: FastifyInstance): void {
 
     await db.insert(auditLogs).values({
       id: crypto.randomUUID(),
-      orgId: user.orgId,
+      orgId,
       actorUserId: user.id,
       action: 'screen.paired',
       targetType: 'screen',
@@ -87,7 +89,7 @@ export function registerScreenProvisioningRoutes(app: FastifyInstance): void {
 
   app.post(
     '/api/v1/screens/provision',
-    { preHandler: [requireAuth, requireRole('owner', 'admin', 'ops')] },
+    { preHandler: [requireAuth, resolveTenantScope, requireRole('owner', 'admin', 'ops')] },
     async (req, reply) => {
     const parsed = ProvisionScreenRequestSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -95,6 +97,7 @@ export function registerScreenProvisioningRoutes(app: FastifyInstance): void {
     }
 
     const user = req.authUser!;
+    const orgId = getEffectiveOrgId(req);
     const { name, location, timezone, activePlaylistId, orientation, city, venueType } = parsed.data;
 
     let playlistName: string | null = null;
@@ -102,7 +105,7 @@ export function registerScreenProvisioningRoutes(app: FastifyInstance): void {
       const [pl] = await db
         .select({ id: playlists.id, name: playlists.name })
         .from(playlists)
-        .where(and(eq(playlists.id, activePlaylistId), eq(playlists.orgId, user.orgId)))
+        .where(and(eq(playlists.id, activePlaylistId), eq(playlists.orgId, orgId)))
         .limit(1);
       if (!pl) {
         return reply.code(400).send({ error: 'Assigned playlist not found' });
@@ -120,7 +123,7 @@ export function registerScreenProvisioningRoutes(app: FastifyInstance): void {
       .insert(screens)
       .values({
         id: screenId,
-        orgId: user.orgId,
+        orgId,
         name,
         location: location ?? null,
         timezone,
@@ -143,7 +146,7 @@ export function registerScreenProvisioningRoutes(app: FastifyInstance): void {
 
     await db.insert(auditLogs).values({
       id: crypto.randomUUID(),
-      orgId: user.orgId,
+      orgId,
       actorUserId: user.id,
       action: 'screen.provisioned',
       targetType: 'screen',

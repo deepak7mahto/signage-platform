@@ -81,6 +81,26 @@ function buildSpec() {
     '/api/v1/auth/refresh': { post: { summary: 'Rotate Refresh Session & Mint Access JWT', responses: { '200': okJson('Refreshed session', ref('AuthUser')) } } },
     '/api/v1/auth/logout': { post: { summary: 'Revoke Refresh Session & Logout', responses: { '200': { description: 'Logged out' } } } },
     '/api/v1/auth/me': { get: { summary: 'Current User', responses: { '200': okJson('Session user', ref('AuthUser')) } } },
+    '/api/v1/orgs/me': {
+      get: { summary: 'Current Organization & Client Grants', responses: { '200': okJson('Org context', ref('Organization')) } },
+      patch: { summary: 'Update Organization Settings', requestBody: jsonBody('UpdateOrg'), responses: { '200': okJson('Updated org', ref('Organization')) } },
+    },
+    '/api/v1/orgs/clients': { post: { summary: 'Create Client Workspace Under Agency', requestBody: jsonBody('CreateClientOrg'), responses: { '201': okJson('Created client', ref('Organization')) } } },
+    '/api/v1/orgs/grants': { get: { summary: 'List Agency Client Grants', responses: { '200': { description: 'Grants list' } } } },
+    '/api/v1/orgs/grants/{id}': { patch: { summary: 'Activate or Revoke Agency Client Grant', responses: { '200': { description: 'Updated grant' } } } },
+    '/api/v1/sites': {
+      get: { summary: 'List Sites', responses: { '200': okJson('Sites', { type: 'object', properties: { items: { type: 'array', items: ref('Site') } } }) } },
+      post: { summary: 'Create Site', requestBody: jsonBody('CreateSite'), responses: { '201': okJson('Site', ref('Site')) } },
+    },
+    '/api/v1/sites/{id}': {
+      patch: { summary: 'Update Site', requestBody: jsonBody('UpdateSite'), responses: { '200': okJson('Site', ref('Site')) } },
+      delete: { summary: 'Delete Site', responses: { '200': { description: 'Deleted' } } },
+    },
+    '/api/v1/config-profiles': {
+      get: { summary: 'List Device Config Profiles', responses: { '200': okJson('Profiles', { type: 'object', properties: { items: { type: 'array', items: ref('DeviceConfigProfile') } } }) } },
+      post: { summary: 'Create Device Config Profile', requestBody: jsonBody('CreateConfigProfile'), responses: { '201': okJson('Profile', ref('DeviceConfigProfile')) } },
+    },
+    '/api/v1/config-profiles/{id}': { delete: { summary: 'Delete Device Config Profile', responses: { '200': { description: 'Deleted' } } } },
     '/api/v1/media': { get: { summary: 'List Media Assets', responses: { '200': okJson('Media list', { type: 'object', properties: { items: { type: 'array', items: ref('MediaAsset') } } }) } } },
     '/api/v1/media/app': { post: { summary: 'Create Interactive App/Addon Creative', requestBody: jsonBody('CreateAppAsset'), responses: { '201': okJson('Created app creative', ref('MediaAsset')) } } },
     '/api/v1/media/{id}': {
@@ -101,6 +121,8 @@ function buildSpec() {
     '/api/v1/screens': { get: { summary: 'List Screens', responses: { '200': okJson('Screens', { type: 'object', properties: { items: { type: 'array', items: ref('Screen') } } }) } } },
     '/api/v1/screens/pair': { post: { summary: 'Claim Pairing Code', requestBody: jsonBody('PairClaimRequest'), responses: { '201': okJson('Paired screen', ref('Screen')) } } },
     '/api/v1/screens/provision': { post: { summary: 'Pre-Provision Display (Zero-Touch URL)', requestBody: jsonBody('ProvisionScreenRequest'), responses: { '201': okJson('Provision token & URL', ref('ProvisionScreenResponse')) } } },
+    '/api/v1/screens/provision/bulk': { post: { summary: 'Bulk CSV Screen Provisioning (Max 1000)', responses: { '201': okJson('Bulk provision result', ref('BulkProvisionResponse')) } } },
+    '/api/v1/screens/{id}/simulate': { post: { summary: 'Dry-Run Schedule Simulation at Timestamp', responses: { '200': okJson('Simulation trace', ref('ScheduleSimulationResponse')) } } },
     '/api/v1/screens/{id}': {
       get: { summary: 'Screen Detail', responses: { '200': okJson('Screen detail', ref('ScreenDetailResponse')) } },
       patch: { summary: 'Update Screen Layout & Inventory', requestBody: jsonBody('UpdateScreen'), responses: { '200': okJson('Updated screen', ref('Screen')) } },

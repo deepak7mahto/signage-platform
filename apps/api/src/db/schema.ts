@@ -15,6 +15,40 @@ import type { ScreenLayoutConfig } from '@signage/shared/contracts';
 export const organizations = pgTable('organizations', {
   id: uuid('id').primaryKey(),
   name: text('name').notNull(),
+  slug: text('slug'),
+  orgType: text('org_type').notNull().default('standalone'),
+  quotas: jsonb('quotas').$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const orgMemberships = pgTable(
+  'org_memberships',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    orgId: uuid('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    role: text('role').notNull().default('admin'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.orgId] })],
+);
+
+export const agencyClientGrants = pgTable('agency_client_grants', {
+  id: uuid('id').primaryKey(),
+  agencyOrgId: uuid('agency_org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  clientOrgId: uuid('client_org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('active'),
+  permissions: jsonb('permissions')
+    .$type<string[]>()
+    .notNull()
+    .default(['manage_screens', 'manage_schedules', 'manage_media']),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -86,6 +120,10 @@ export const mediaAssets = pgTable('media_assets', {
   height: integer('height'),
   codec: text('codec'),
   failureReason: text('failure_reason'),
+  validFrom: text('valid_from'),
+  validUntil: text('valid_until'),
+  tags: jsonb('tags').$type<string[]>().notNull().default([]),
+  sharedWithClients: boolean('shared_with_clients').notNull().default(false),
   appConfig: jsonb('app_config').$type<CreativeConfig | null>(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
@@ -248,3 +286,21 @@ export const screenCommands = pgTable('screen_commands', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   ackedAt: timestamp('acked_at', { withTimezone: true }),
 });
+
+export const popHourlyRollups = pgTable(
+  'pop_hourly_rollups',
+  {
+    orgId: uuid('org_id').notNull(),
+    screenId: uuid('screen_id').notNull(),
+    mediaAssetId: uuid('media_asset_id').notNull(),
+    hourBucket: timestamp('hour_bucket', { withTimezone: true }).notNull(),
+    plays: integer('plays').notNull().default(0),
+    completedPlays: integer('completed_plays').notNull().default(0),
+    totalDurationMs: bigint('total_duration_ms', { mode: 'number' }).notNull().default(0),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.orgId, table.screenId, table.mediaAssetId, table.hourBucket],
+    }),
+  ],
+);

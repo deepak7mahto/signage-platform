@@ -7,6 +7,8 @@ import { pgClient } from '../db/index.js';
 
 export const MEDIA_PROCESS_QUEUE = 'media.process';
 const POP_PARTITION_QUEUE = 'pop.partitions.maintain';
+const POP_ROLLUP_QUEUE = 'pop.rollups.aggregate';
+const POP_RETENTION_QUEUE = 'pop.partitions.retention';
 const FLEET_ALERT_SWEEP_QUEUE = 'fleet.alerts.sweep';
 const BOOT_GRACE_MS = 5 * 60_000;
 
@@ -115,19 +117,71 @@ async function runFleetAlertSweep(): Promise<void> {
   }
 }
 
+async function runPopHourlyRollups(): Promise<void> {
+  await pgClient`
+    INSERT INTO pop_hourly_rollups (
+      org_id, screen_id, media_asset_id, hour_bucket,
+      plays, completed_plays, total_duration_ms
+    )
+    SELECT
+      org_id,
+      screen_id,
+      media_asset_id,
+      date_trunc('hour', started_at) AS hour_bucket,
+      COUNT(*)::int AS plays,
+      COUNT(*) FILTER (WHERE status = 'completed')::int AS completed_plays,
+      COALESCE(SUM(duration_ms), 0)::bigint AS total_duration_ms
+    FROM proof_of_play
+    WHERE started_at >= NOW() - INTERVAL '2 hours'
+    GROUP BY org_id, screen_id, media_asset_id, date_trunc('hour', started_at)
+    ON CONFLICT (org_id, screen_id, media_asset_id, hour_bucket)
+    DO UPDATE SET
+      plays = EXCLUDED.plays,
+      completed_plays = EXCLUDED.completed_plays,
+      total_duration_ms = EXCLUDED.total_duration_ms
+  `;
+}
+
+async function dropExpiredPopPartitions(): Promise<void> {
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const cutoffKey = `${cutoff.getUTCFullYear()}_${String(cutoff.getUTCMonth() + 1).padStart(2, '0')}`;
+  const rows = await pgClient<Array<{ tablename: string }>>`
+    SELECT tablename
+    FROM pg_tables
+    WHERE schemaname = 'public'
+      AND tablename ~ '^proof_of_play_[0-9]{4}_[0-9]{2}$'
+  `;
+  for (const row of rows) {
+    const suffix = row.tablename.slice('proof_of_play_'.length);
+    if (suffix < cutoffKey && /^proof_of_play_[0-9]{4}_[0-9]{2}$/.test(row.tablename)) {
+      await pgClient.unsafe(`DROP TABLE IF EXISTS ${row.tablename}`);
+    }
+  }
+}
+
 export async function startQueue(): Promise<void> {
   startedAtMs = Date.now();
   boss = new PgBoss(config.DATABASE_URL);
   await boss.start();
   await boss.createQueue(MEDIA_PROCESS_QUEUE);
   await boss.createQueue(POP_PARTITION_QUEUE);
+  await boss.createQueue(POP_ROLLUP_QUEUE);
+  await boss.createQueue(POP_RETENTION_QUEUE);
   await boss.createQueue(FLEET_ALERT_SWEEP_QUEUE);
 
   await boss.schedule(POP_PARTITION_QUEUE, '0 2 * * *', {});
+  await boss.schedule(POP_ROLLUP_QUEUE, '*/15 * * * *', {});
+  await boss.schedule(POP_RETENTION_QUEUE, '30 3 * * *', {});
   await boss.schedule(FLEET_ALERT_SWEEP_QUEUE, '*/3 * * * *', {});
 
   await boss.work(POP_PARTITION_QUEUE, async () => {
     await ensureFuturePopPartitions(6);
+  });
+  await boss.work(POP_ROLLUP_QUEUE, async () => {
+    await runPopHourlyRollups();
+  });
+  await boss.work(POP_RETENTION_QUEUE, async () => {
+    await dropExpiredPopPartitions();
   });
   await boss.work(FLEET_ALERT_SWEEP_QUEUE, async () => {
     await runFleetAlertSweep();
