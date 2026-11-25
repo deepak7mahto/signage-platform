@@ -4,8 +4,8 @@
   "private": true,
   "packageManager": "pnpm@11.13.1",
   "scripts": {
-    "build": "pnpm --filter @signage/shared build && pnpm --filter @signage/player-core build && pnpm --filter @signage/player-web-shell build && pnpm --filter @signage/api build && pnpm --filter @signage/worker-media build && pnpm --filter @signage/cms-web build && pnpm --filter @signage/player-web-sim build",
-    "typecheck": "pnpm --filter @signage/shared build && pnpm --filter @signage/player-core build && pnpm --filter @signage/player-web-shell build && pnpm --filter @signage/api typecheck && pnpm --filter @signage/worker-media typecheck && pnpm --filter @signage/cms-web typecheck && pnpm --filter @signage/player-web-sim typecheck",
+    "build": "pnpm --filter @signage/shared build && pnpm --filter @signage/player-core build && pnpm --filter @signage/player-web-shell build && pnpm --filter @signage/api build && pnpm --filter @signage/worker-media build && pnpm --filter @signage/cms-web build && pnpm --filter @signage/player-web-sim build && pnpm --filter @signage/player-windows build",
+    "typecheck": "pnpm --filter @signage/shared build && pnpm --filter @signage/player-core build && pnpm --filter @signage/player-web-shell build && pnpm --filter @signage/api typecheck && pnpm --filter @signage/worker-media typecheck && pnpm --filter @signage/cms-web typecheck && pnpm --filter @signage/player-web-sim typecheck && pnpm --filter @signage/player-windows typecheck",
     "generate:openapi": "pnpm --filter @signage/shared build && node scripts/generate-openapi.mjs",
     "test:conformance": "pnpm --filter @signage/shared build && pnpm --filter @signage/player-core build && node --test scripts/test-conformance.mjs scripts/test-player-core.mjs",
     "check:rules": "node scripts/check-code-rules.mjs",

@@ -1,0 +1,22 @@
+{
+  "productName": "SignageOS Player",
+  "version": "0.1.0",
+  "identifier": "com.signageos.player.windows",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "SignageOS Player",
+        "fullscreen": true,
+        "decorations": false,
+        "resizable": false,
+        "alwaysOnTop": true
+      }
+    ]
+  }
+}
