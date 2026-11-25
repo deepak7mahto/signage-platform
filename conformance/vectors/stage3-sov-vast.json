@@ -1,0 +1,52 @@
+{
+  "sovCases": [
+    {
+      "name": "60-40 ratio interleaves 3:2 cleanly",
+      "loopMode": "sov_weighted",
+      "items": [
+        { "id": "A", "weight": 60 },
+        { "id": "B", "weight": 40 }
+      ],
+      "expectedIds": ["A", "B", "A", "B", "A"]
+    },
+    {
+      "name": "sequential ignores weights and preserves order",
+      "loopMode": "sequential",
+      "items": [
+        { "id": "A", "weight": 60 },
+        { "id": "B", "weight": 40 }
+      ],
+      "expectedIds": ["A", "B"]
+    },
+    {
+      "name": "equal weights alternate cleanly",
+      "loopMode": "sov_weighted",
+      "items": [
+        { "id": "X", "weight": 50 },
+        { "id": "Y", "weight": 50 }
+      ],
+      "expectedIds": ["X", "Y"]
+    }
+  ],
+  "vastCases": [
+    {
+      "name": "valid VAST 4.1 MP4 creative with CDATA and impressions",
+      "xml": "<VAST version=\"4.1\"><Ad id=\"ad-401\"><InLine><Impression><![CDATA[https://ssp.example.com/imp?id=1]]></Impression><Creatives><Creative><Linear><Duration>00:00:15</Duration><MediaFiles><MediaFile type=\"video/mp4\"><![CDATA[https://cdn.example.com/spot.mp4]]></MediaFile></MediaFiles></Linear></Creative></Creatives></InLine></Ad></VAST>",
+      "expectedOk": true,
+      "expectedAdId": "ad-401",
+      "expectedDurationMs": 15000,
+      "expectedMediaUrl": "https://cdn.example.com/spot.mp4"
+    },
+    {
+      "name": "empty VAST falls back to house playlist",
+      "xml": "<VAST version=\"4.0\"/>",
+      "expectedOk": false,
+      "expectedFallback": "house_playlist"
+    }
+  ],
+  "totpRfc6238Vectors": {
+    "secretBase32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+    "timestampMs": 59000,
+    "expectedCode": "287082"
+  }
+}

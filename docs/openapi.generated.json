@@ -87,6 +87,94 @@
         }
       }
     },
+    "/api/v1/auth/2fa/status": {
+      "get": {
+        "summary": "2FA Status",
+        "responses": {
+          "200": {
+            "description": "TOTP status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/setup": {
+      "post": {
+        "summary": "Initialize TOTP 2FA Secret",
+        "responses": {
+          "200": {
+            "description": "Setup secret",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpSetupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/enable": {
+      "post": {
+        "summary": "Verify and Enable TOTP 2FA",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpCodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Enabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/disable": {
+      "post": {
+        "summary": "Disable TOTP 2FA",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpCodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/orgs/me": {
       "get": {
         "summary": "Current Organization & Client Grants",
@@ -489,6 +577,265 @@
         }
       }
     },
+    "/api/v1/media/{id}/variants": {
+      "get": {
+        "summary": "List Orientation Variants",
+        "responses": {
+          "200": {
+            "description": "Variants",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MediaAssetVariant"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Orientation Variant Upload URL",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMediaVariantRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Variant & upload URL"
+          }
+        }
+      }
+    },
+    "/api/v1/media/{id}/variants/{variantId}/complete": {
+      "post": {
+        "summary": "Finalize Media Variant",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteMediaVariantRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Variant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAssetVariant"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/media/{id}/version": {
+      "post": {
+        "summary": "Create Next Asset Version",
+        "responses": {
+          "201": {
+            "description": "New asset version & upload URL"
+          }
+        }
+      }
+    },
+    "/api/v1/feeds": {
+      "get": {
+        "summary": "List Server-Polled Data Feeds",
+        "responses": {
+          "200": {
+            "description": "Feeds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DataFeed"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Data Feed",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDataFeed"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Feed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataFeed"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/feeds/{id}": {
+      "patch": {
+        "summary": "Update Data Feed",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDataFeed"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Feed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataFeed"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Data Feed",
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/api/v1/feeds/{id}/refresh": {
+      "post": {
+        "summary": "Poll Data Feed Now",
+        "responses": {
+          "200": {
+            "description": "Feed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataFeed"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/triggers": {
+      "get": {
+        "summary": "List Event Triggers",
+        "responses": {
+          "200": {
+            "description": "Triggers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ScreenTrigger"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Event Trigger",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScreenTrigger"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Trigger",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateScreenTriggerResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/triggers/{id}": {
+      "delete": {
+        "summary": "Delete Event Trigger",
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/api/v1/triggers/{key}/fire": {
+      "post": {
+        "summary": "Fire Trigger Override Schedule",
+        "responses": {
+          "200": {
+            "description": "Fired trigger",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FireTriggerResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/playlists": {
       "get": {
         "summary": "List Playlists",
@@ -824,6 +1171,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ScreenCommand"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screens/{id}/usb-pack": {
+      "post": {
+        "summary": "Generate Signed USB Offline Recovery Pack",
+        "responses": {
+          "200": {
+            "description": "USB pack",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsbRecoveryPack"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/programmatic/vast/preview": {
+      "post": {
+        "summary": "Preview VAST 4.x Ad Parse & Fallback",
+        "responses": {
+          "200": {
+            "description": "VAST parse result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VastParseResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/device/programmatic-fill": {
+      "get": {
+        "summary": "Fetch Programmatic VAST Fill for Unsold Slots",
+        "responses": {
+          "200": {
+            "description": "VAST fill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VastParseResult"
                 }
               }
             }
@@ -1278,8 +1676,12 @@
               "admin",
               "ops",
               "editor",
-              "viewer"
+              "viewer",
+              "advertiser"
             ]
+          },
+          "totpEnabled": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -1500,6 +1902,20 @@
           "expired"
         ]
       },
+      "CompleteMediaVariantRequest": {
+        "type": "object",
+        "properties": {
+          "sha256": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          }
+        }
+      },
       "CompleteUploadRequest": {
         "type": "object",
         "properties": {
@@ -1566,6 +1982,57 @@
           "name"
         ]
       },
+      "CreateDataFeed": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "pollIntervalSec": {
+            "type": "integer"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "sourceUrl"
+        ]
+      },
+      "CreateMediaVariantRequest": {
+        "type": "object",
+        "properties": {
+          "orientation": {
+            "type": "string",
+            "enum": [
+              "landscape",
+              "portrait"
+            ]
+          },
+          "filename": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "orientation",
+          "filename",
+          "mimeType",
+          "sizeBytes"
+        ]
+      },
       "CreatePlaylist": {
         "type": "object",
         "properties": {
@@ -1574,6 +2041,13 @@
           },
           "description": {
             "type": "string"
+          },
+          "loopMode": {
+            "type": "string",
+            "enum": [
+              "sequential",
+              "sov_weighted"
+            ]
           },
           "items": {
             "type": "array",
@@ -1584,6 +2058,9 @@
                   "type": "string"
                 },
                 "durationMs": {
+                  "type": "integer"
+                },
+                "weight": {
                   "type": "integer"
                 }
               },
@@ -1670,6 +2147,114 @@
           "name"
         ]
       },
+      "CreateScreenTriggerResponse": {
+        "type": "object",
+        "properties": {
+          "trigger": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "orgId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "triggerKey": {
+                "type": "string"
+              },
+              "targetType": {
+                "type": "string",
+                "enum": [
+                  "screen",
+                  "group"
+                ]
+              },
+              "targetId": {
+                "type": "string"
+              },
+              "playlistId": {
+                "type": "string"
+              },
+              "durationSec": {
+                "type": "integer"
+              },
+              "priority": {
+                "type": "integer"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "lastFiredAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "orgId",
+              "name",
+              "triggerKey",
+              "targetType",
+              "targetId",
+              "playlistId",
+              "durationSec",
+              "priority",
+              "enabled",
+              "lastFiredAt",
+              "createdAt"
+            ]
+          },
+          "triggerSecret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "trigger",
+          "triggerSecret"
+        ]
+      },
+      "CreateScreenTrigger": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "triggerKey": {
+            "type": "string"
+          },
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "screen",
+              "group"
+            ]
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "playlistId": {
+            "type": "string"
+          },
+          "durationSec": {
+            "type": "integer"
+          },
+          "priority": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "targetType",
+          "targetId",
+          "playlistId"
+        ]
+      },
       "CreateSite": {
         "type": "object",
         "properties": {
@@ -1706,6 +2291,57 @@
       "CreativeConfig": {
         "type": "object",
         "additionalProperties": {}
+      },
+      "DataFeed": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "orgId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "pollIntervalSec": {
+            "type": "integer"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "lastPayload": {
+            "nullable": true
+          },
+          "lastFetchedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orgId",
+          "name",
+          "sourceUrl",
+          "pollIntervalSec",
+          "lastPayload",
+          "lastFetchedAt",
+          "lastError",
+          "createdAt"
+        ]
       },
       "DeviceCapability": {
         "type": "string",
@@ -1815,6 +2451,9 @@
                 "sortOrder": {
                   "type": "integer"
                 },
+                "weight": {
+                  "type": "integer"
+                },
                 "width": {
                   "type": "integer",
                   "nullable": true
@@ -1914,6 +2553,13 @@
                 "version": {
                   "type": "integer"
                 },
+                "loopMode": {
+                  "type": "string",
+                  "enum": [
+                    "sequential",
+                    "sov_weighted"
+                  ]
+                },
                 "items": {
                   "type": "array",
                   "items": {
@@ -1944,6 +2590,9 @@
                         "type": "integer"
                       },
                       "sortOrder": {
+                        "type": "integer"
+                      },
+                      "weight": {
                         "type": "integer"
                       },
                       "width": {
@@ -2064,6 +2713,10 @@
                 }
               }
             }
+          },
+          "feeds": {
+            "type": "object",
+            "additionalProperties": {}
           }
         },
         "required": [
@@ -2258,6 +2911,29 @@
           }
         ]
       },
+      "FireTriggerResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "scheduleId": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "pushed": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ok",
+          "scheduleId",
+          "expiresAt",
+          "pushed"
+        ]
+      },
       "FitMode": {
         "type": "string",
         "enum": [
@@ -2320,6 +2996,9 @@
           },
           "password": {
             "type": "string"
+          },
+          "totpCode": {
+            "type": "string"
           }
         },
         "required": [
@@ -2355,6 +3034,9 @@
             "type": "integer"
           },
           "sortOrder": {
+            "type": "integer"
+          },
+          "weight": {
             "type": "integer"
           },
           "width": {
@@ -2399,6 +3081,13 @@
           "version": {
             "type": "integer"
           },
+          "loopMode": {
+            "type": "string",
+            "enum": [
+              "sequential",
+              "sov_weighted"
+            ]
+          },
           "items": {
             "type": "array",
             "items": {
@@ -2429,6 +3118,9 @@
                   "type": "integer"
                 },
                 "sortOrder": {
+                  "type": "integer"
+                },
+                "weight": {
                   "type": "integer"
                 },
                 "width": {
@@ -2595,6 +3287,13 @@
             "type": "string",
             "nullable": true
           },
+          "version": {
+            "type": "integer"
+          },
+          "parentAssetId": {
+            "type": "string",
+            "nullable": true
+          },
           "createdAt": {
             "type": "string"
           }
@@ -2610,6 +3309,68 @@
           "sizeBytes",
           "sha256",
           "durationMs",
+          "createdAt"
+        ]
+      },
+      "MediaAssetVariant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "assetId": {
+            "type": "string"
+          },
+          "orgId": {
+            "type": "string"
+          },
+          "orientation": {
+            "type": "string",
+            "enum": [
+              "landscape",
+              "portrait"
+            ]
+          },
+          "objectKey": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          },
+          "sha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "width": {
+            "type": "integer",
+            "nullable": true
+          },
+          "height": {
+            "type": "integer",
+            "nullable": true
+          },
+          "previewUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "assetId",
+          "orgId",
+          "orientation",
+          "objectKey",
+          "mimeType",
+          "sizeBytes",
+          "sha256",
+          "width",
+          "height",
           "createdAt"
         ]
       },
@@ -2778,6 +3539,9 @@
           },
           "durationMs": {
             "type": "integer"
+          },
+          "weight": {
+            "type": "integer"
           }
         },
         "required": [
@@ -2797,6 +3561,9 @@
             "type": "integer"
           },
           "durationMs": {
+            "type": "integer"
+          },
+          "weight": {
             "type": "integer"
           },
           "asset": {
@@ -2873,6 +3640,13 @@
                 "type": "string",
                 "nullable": true
               },
+              "version": {
+                "type": "integer"
+              },
+              "parentAssetId": {
+                "type": "string",
+                "nullable": true
+              },
               "createdAt": {
                 "type": "string"
               }
@@ -2899,6 +3673,13 @@
           "durationMs"
         ]
       },
+      "PlaylistLoopMode": {
+        "type": "string",
+        "enum": [
+          "sequential",
+          "sov_weighted"
+        ]
+      },
       "Playlist": {
         "type": "object",
         "properties": {
@@ -2918,6 +3699,13 @@
           "version": {
             "type": "integer"
           },
+          "loopMode": {
+            "type": "string",
+            "enum": [
+              "sequential",
+              "sov_weighted"
+            ]
+          },
           "items": {
             "type": "array",
             "items": {
@@ -2933,6 +3721,9 @@
                   "type": "integer"
                 },
                 "durationMs": {
+                  "type": "integer"
+                },
+                "weight": {
                   "type": "integer"
                 },
                 "asset": {
@@ -3006,6 +3797,13 @@
                       "nullable": true
                     },
                     "previewUrl": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "version": {
+                      "type": "integer"
+                    },
+                    "parentAssetId": {
                       "type": "string",
                       "nullable": true
                     },
@@ -4669,6 +5467,66 @@
           "locked"
         ]
       },
+      "ScreenTrigger": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "orgId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "triggerKey": {
+            "type": "string"
+          },
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "screen",
+              "group"
+            ]
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "playlistId": {
+            "type": "string"
+          },
+          "durationSec": {
+            "type": "integer"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "lastFiredAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orgId",
+          "name",
+          "triggerKey",
+          "targetType",
+          "targetId",
+          "playlistId",
+          "durationSec",
+          "priority",
+          "enabled",
+          "lastFiredAt",
+          "createdAt"
+        ]
+      },
       "SendScreenCommand": {
         "type": "object",
         "properties": {
@@ -4969,6 +5827,43 @@
           "clock_sync"
         ]
       },
+      "TotpCodeRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "TotpSetupResponse": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "type": "string"
+          },
+          "otpauthUri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "otpauthUri"
+        ]
+      },
+      "TotpStatusResponse": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
       "TransitionType": {
         "type": "string",
         "enum": [
@@ -4977,6 +5872,33 @@
           "slide_left",
           "zoom"
         ]
+      },
+      "TriggerTargetType": {
+        "type": "string",
+        "enum": [
+          "screen",
+          "group"
+        ]
+      },
+      "UpdateDataFeed": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "pollIntervalSec": {
+            "type": "integer"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
       },
       "UpdateMediaApproval": {
         "type": "object",
@@ -5035,6 +5957,13 @@
             "type": "string",
             "nullable": true
           },
+          "loopMode": {
+            "type": "string",
+            "enum": [
+              "sequential",
+              "sov_weighted"
+            ]
+          },
           "items": {
             "type": "array",
             "items": {
@@ -5044,6 +5973,9 @@
                   "type": "string"
                 },
                 "durationMs": {
+                  "type": "integer"
+                },
+                "weight": {
                   "type": "integer"
                 }
               },
@@ -5378,6 +6310,13 @@
                 "type": "string",
                 "nullable": true
               },
+              "version": {
+                "type": "integer"
+              },
+              "parentAssetId": {
+                "type": "string",
+                "nullable": true
+              },
               "createdAt": {
                 "type": "string"
               }
@@ -5405,6 +6344,114 @@
           "uploadUrl"
         ]
       },
+      "UsbRecoveryAsset": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "assetId",
+          "sha256",
+          "filename",
+          "mimeType",
+          "sizeBytes",
+          "url"
+        ]
+      },
+      "UsbRecoveryPack": {
+        "type": "object",
+        "properties": {
+          "packVersion": {
+            "type": "number",
+            "enum": [
+              1
+            ]
+          },
+          "screenId": {
+            "type": "string"
+          },
+          "screenName": {
+            "type": "string"
+          },
+          "generatedAt": {
+            "type": "string"
+          },
+          "kid": {
+            "type": "string"
+          },
+          "signatureB64": {
+            "type": "string"
+          },
+          "publicKeyB64": {
+            "type": "string"
+          },
+          "manifestJson": {
+            "type": "string"
+          },
+          "assets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "assetId": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                },
+                "filename": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "sizeBytes": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "assetId",
+                "sha256",
+                "filename",
+                "mimeType",
+                "sizeBytes",
+                "url"
+              ]
+            }
+          }
+        },
+        "required": [
+          "packVersion",
+          "screenId",
+          "screenName",
+          "generatedAt",
+          "kid",
+          "signatureB64",
+          "publicKeyB64",
+          "manifestJson",
+          "assets"
+        ]
+      },
       "UserRole": {
         "type": "string",
         "enum": [
@@ -5412,7 +6459,90 @@
           "admin",
           "ops",
           "editor",
-          "viewer"
+          "viewer",
+          "advertiser"
+        ]
+      },
+      "VastCreative": {
+        "type": "object",
+        "properties": {
+          "adId": {
+            "type": "string"
+          },
+          "mediaUrl": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "impressionUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "adId",
+          "mediaUrl",
+          "mimeType",
+          "durationMs",
+          "impressionUrls"
+        ]
+      },
+      "VastParseResult": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "creative": {
+            "type": "object",
+            "properties": {
+              "adId": {
+                "type": "string"
+              },
+              "mediaUrl": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "durationMs": {
+                "type": "integer"
+              },
+              "impressionUrls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "adId",
+              "mediaUrl",
+              "mimeType",
+              "durationMs",
+              "impressionUrls"
+            ],
+            "nullable": true
+          },
+          "fallback": {
+            "type": "string",
+            "enum": [
+              "house_playlist"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "creative"
         ]
       },
       "VenueType": {

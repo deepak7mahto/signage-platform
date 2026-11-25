@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDown, ArrowLeft, ArrowUp, Plus, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import type { MediaAsset } from '@signage/shared';
+import type { MediaAsset, PlaylistLoopMode } from '@signage/shared';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -13,6 +13,7 @@ interface DraftItem {
   key: string;
   mediaAssetId: string;
   durationSec: number;
+  weight: number;
   asset?: MediaAsset;
 }
 
@@ -32,17 +33,20 @@ export function PlaylistDetailPage() {
   });
 
   const [name, setName] = useState('');
+  const [loopMode, setLoopMode] = useState<PlaylistLoopMode>('sequential');
   const [items, setItems] = useState<DraftItem[]>([]);
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (plData?.playlist) {
       setName(plData.playlist.name);
+      setLoopMode(plData.playlist.loopMode ?? 'sequential');
       setItems(
         plData.playlist.items.map((item) => ({
           key: item.id,
           mediaAssetId: item.mediaAssetId,
           durationSec: Math.max(1, Math.round(item.durationMs / 1000)),
+          weight: item.weight ?? 100,
           asset: item.asset,
         })),
       );
@@ -53,9 +57,11 @@ export function PlaylistDetailPage() {
     mutationFn: () =>
       api.updatePlaylist(id!, {
         name: name.trim(),
+        loopMode,
         items: items.map((i) => ({
           mediaAssetId: i.mediaAssetId,
           durationMs: Math.max(1, i.durationSec) * 1000,
+          weight: Math.max(1, Math.min(1000, i.weight || 100)),
         })),
       }),
     onSuccess: ({ playlist }) => {
@@ -80,6 +86,7 @@ export function PlaylistDetailPage() {
         key: `${asset.id}-${Date.now()}-${Math.random()}`,
         mediaAssetId: asset.id,
         durationSec: inferredSec,
+        weight: 100,
         asset,
       },
     ]);
@@ -126,10 +133,28 @@ export function PlaylistDetailPage() {
           </div>
         </div>
 
-        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-          <Save className="h-4 w-4" />
-          {saveMutation.isPending ? 'Publishing...' : 'Save & Publish'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-md border border-border bg-card p-1 text-xs">
+            <button
+              type="button"
+              onClick={() => setLoopMode('sequential')}
+              className={`cursor-pointer rounded-sm px-2.5 py-1 ${loopMode === 'sequential' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'}`}
+            >
+              Sequential
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoopMode('sov_weighted')}
+              className={`cursor-pointer rounded-sm px-2.5 py-1 ${loopMode === 'sov_weighted' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'}`}
+            >
+              SOV Weighted
+            </button>
+          </div>
+          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+            <Save className="h-4 w-4" />
+            {saveMutation.isPending ? 'Publishing...' : 'Save & Publish'}
+          </Button>
+        </div>
       </div>
 
       {savedNotice && (
@@ -167,6 +192,24 @@ export function PlaylistDetailPage() {
                   </div>
 
                   <div className="flex items-center gap-1.5">
+                    {loopMode === 'sov_weighted' && (
+                      <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <span>Wt:</span>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={1000}
+                          value={item.weight}
+                          onChange={(e) => {
+                            const val = Math.max(1, Math.min(1000, Number(e.target.value) || 100));
+                            setItems((prev) =>
+                              prev.map((row, rIdx) => (rIdx === idx ? { ...row, weight: val } : row)),
+                            );
+                          }}
+                          className="h-8 w-16 px-2 text-xs"
+                        />
+                      </label>
+                    )}
                     <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <span>Sec:</span>
                       <Input

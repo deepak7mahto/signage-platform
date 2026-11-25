@@ -7,6 +7,7 @@ import { config } from '../config.js';
 import { db } from '../db/index.js';
 import { userSessions, users } from '../db/schema.js';
 import { generateOpaqueToken, sha256Hex, verifyPassword } from '../lib/crypto.js';
+import { verifyTotpCode } from '../lib/totp.js';
 
 export const AUTH_COOKIE_NAME = 'signage_session';
 export const REFRESH_COOKIE_NAME = 'signage_refresh';
@@ -78,6 +79,7 @@ function toAuthUser(row: typeof users.$inferSelect): AuthUser {
     email: row.email,
     name: row.name,
     role: row.role as UserRole,
+    totpEnabled: row.totpEnabled,
   };
 }
 
@@ -120,6 +122,15 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
       if (!user || !verifyPassword(parsed.data.password, user.passwordHash)) {
         return reply.code(401).send({ error: 'Invalid email or password' });
+      }
+
+      if (user.totpEnabled && user.totpSecret) {
+        if (!parsed.data.totpCode) {
+          return reply.code(401).send({ error: 'TOTP 2FA code required', requiresTotp: true });
+        }
+        if (!verifyTotpCode(user.totpSecret, parsed.data.totpCode)) {
+          return reply.code(401).send({ error: 'Invalid 2FA code', requiresTotp: true });
+        }
       }
 
       const authUser = toAuthUser(user);

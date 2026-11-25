@@ -1,10 +1,12 @@
 import { and, asc, desc, eq, inArray, or } from 'drizzle-orm';
 import {
+  expandSovPlaylistItems,
   isBinaryMediaType,
   type DeviceManifest,
   type ManifestItem,
   type ManifestPlaylist,
   type ManifestSchedule,
+  type PlaylistLoopMode,
 } from '@signage/shared';
 import { db } from '../db/index.js';
 import {
@@ -16,6 +18,7 @@ import {
   screens,
 } from '../db/schema.js';
 import { sha256Hex, signManifest } from './crypto.js';
+import { loadOrgFeedsMap, loadOrientationVariantMap } from './manifest-extensions.js';
 import { createPresignedGetUrl } from './s3.js';
 
 export type ScreenRow = typeof screens.$inferSelect;
@@ -84,6 +87,8 @@ export async function buildSignedManifest(
   let versionSum = 0;
   for (const pl of playlistRows) versionSum += pl.version;
 
+  const feedsMap = await loadOrgFeedsMap(screen.orgId);
+
   const scheduleFingerprint = scheduleRows
     .map((s) => `${s.id}:${s.updatedAt.toISOString()}:${s.priority}:${s.playlistId}`)
     .join('|');
@@ -93,6 +98,7 @@ export async function buildSignedManifest(
     screen.orientation,
     JSON.stringify(screen.layoutConfig ?? null),
     screen.programmaticFillUrl ?? '',
+    JSON.stringify(feedsMap),
   ].join('|');
 
   const revisionDigest = sha256Hex(
@@ -129,28 +135,40 @@ export async function buildSignedManifest(
       return signed;
     };
 
+    const variantMap = await loadOrientationVariantMap(
+      allItemRows.map((r) => r.asset.id),
+      screen.orientation,
+    );
+
     const itemsByPlaylist = new Map<string, ManifestItem[]>();
     for (const { item, asset } of allItemRows) {
       if (asset.status !== 'ready' || asset.approvalStatus !== 'approved' || !asset.sha256) {
         continue;
       }
       const isBinary = isBinaryMediaType(asset.type);
+      const variant = isBinary ? variantMap.get(asset.id) : undefined;
+      const effKey = variant?.objectKey ?? asset.objectKey;
+      const effSha = variant?.sha256 ?? asset.sha256;
+      const effSize = variant ? Number(variant.sizeBytes) : Number(asset.sizeBytes);
+      const effMime = variant?.mimeType ?? asset.mimeType;
+
       const list = itemsByPlaylist.get(item.playlistId) ?? [];
       list.push({
         itemId: item.id,
         assetId: asset.id,
         title: asset.title,
         type: asset.type,
-        mimeType: asset.mimeType,
-        sha256: asset.sha256,
-        sizeBytes: Number(asset.sizeBytes),
+        mimeType: effMime,
+        sha256: effSha,
+        sizeBytes: effSize,
         durationMs: asset.type === 'video' && asset.durationMs ? asset.durationMs : item.durationMs,
         sortOrder: item.sortOrder,
-        width: asset.width ?? null,
-        height: asset.height ?? null,
+        weight: item.weight,
+        width: variant?.width ?? asset.width ?? null,
+        height: variant?.height ?? asset.height ?? null,
         appConfig: asset.appConfig ?? null,
         url: isBinary
-          ? await getUrl(asset.objectKey)
+          ? await getUrl(effKey)
           : typeof asset.appConfig?.url === 'string'
             ? asset.appConfig.url
             : '',
@@ -159,11 +177,14 @@ export async function buildSignedManifest(
     }
 
     for (const pl of playlistRows) {
+      const loopMode = (pl.loopMode as PlaylistLoopMode) ?? 'sequential';
+      const rawItems = itemsByPlaylist.get(pl.id) ?? [];
       playlistsMap[pl.id] = {
         id: pl.id,
         name: pl.name,
         version: pl.version,
-        items: itemsByPlaylist.get(pl.id) ?? [],
+        loopMode,
+        items: expandSovPlaylistItems(rawItems, loopMode),
       };
     }
   }
@@ -206,6 +227,7 @@ export async function buildSignedManifest(
       sidebarTitle: screen.layoutConfig?.sidebarTitle ?? null,
       sidebarLines: screen.layoutConfig?.sidebarLines ?? [],
     },
+    ...(Object.keys(feedsMap).length > 0 ? { feeds: feedsMap } : {}),
   };
 
   const manifest: DeviceManifest = {

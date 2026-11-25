@@ -10,6 +10,7 @@ import {
   LogOut,
   Monitor,
   ShieldCheck,
+  Zap,
 } from 'lucide-react';
 import { NavLink, Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError, api } from '../lib/api';
@@ -67,6 +68,7 @@ export function AppShell() {
     { to: '/media', label: 'Media Library', icon: Film },
     { to: '/analytics', label: 'Analytics', icon: BarChart3 },
     { to: '/audit-logs', label: 'Audit Logs', icon: ShieldCheck },
+    { to: '/ops', label: 'Feeds, Triggers & 2FA', icon: Zap },
   ];
 
   const withScope = (to: string) => (orgParam ? `${to}?org=${encodeURIComponent(orgParam)}` : to);

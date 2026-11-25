@@ -7,6 +7,7 @@ import {
   isBinaryMediaType,
   type Playlist,
   type PlaylistItem,
+  type PlaylistLoopMode,
 } from '@signage/shared';
 import { db } from '../db/index.js';
 import { auditLogs, mediaAssets, playlistItems, playlists } from '../db/schema.js';
@@ -42,6 +43,7 @@ async function loadPlaylistWithItems(playlistRow: typeof playlists.$inferSelect)
         mediaAssetId: item.mediaAssetId,
         sortOrder: item.sortOrder,
         durationMs: item.durationMs,
+        weight: item.weight,
         asset: {
           id: asset.id,
           orgId: asset.orgId,
@@ -68,6 +70,7 @@ async function loadPlaylistWithItems(playlistRow: typeof playlists.$inferSelect)
     name: playlistRow.name,
     description: playlistRow.description,
     version: playlistRow.version,
+    loopMode: (playlistRow.loopMode as PlaylistLoopMode) ?? 'sequential',
     items,
     createdAt: playlistRow.createdAt.toISOString(),
     updatedAt: playlistRow.updatedAt.toISOString(),
@@ -137,6 +140,7 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
         orgId,
         name: parsed.data.name,
         description: parsed.data.description ?? null,
+        loopMode: parsed.data.loopMode,
         version: 1,
       })
       .returning();
@@ -149,6 +153,7 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
           mediaAssetId: item.mediaAssetId,
           sortOrder: idx,
           durationMs: item.durationMs,
+          weight: item.weight,
         })),
       );
     }
@@ -204,6 +209,7 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
           name: parsed.data.name ?? existing.name,
           description:
             parsed.data.description === undefined ? existing.description : parsed.data.description,
+          loopMode: parsed.data.loopMode ?? existing.loopMode,
           version: sql`${playlists.version} + 1`,
           updatedAt: new Date(),
         })
@@ -220,6 +226,7 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
               mediaAssetId: item.mediaAssetId,
               sortOrder: idx,
               durationMs: item.durationMs,
+              weight: item.weight,
             })),
           );
         }

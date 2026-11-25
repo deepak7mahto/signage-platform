@@ -73,6 +73,7 @@ export function PlaylistsPage() {
     createMutation.mutate({
       name: name.trim(),
       description: description.trim() || undefined,
+      loopMode: 'sequential',
       items: [],
     });
   };

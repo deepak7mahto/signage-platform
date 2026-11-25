@@ -1,0 +1,16 @@
+{
+  "id": "com.signageos.playertv",
+  "version": "1.0.0",
+  "vendor": "SignageOS",
+  "type": "web",
+  "main": "index.html",
+  "title": "SignageOS Player",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true,
+  "requiredPermissions": [
+    "time.query",
+    "system.operation",
+    "audio.operation",
+    "storage.operation"
+  ]
+}

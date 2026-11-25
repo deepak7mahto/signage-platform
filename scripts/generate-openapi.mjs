@@ -81,6 +81,10 @@ function buildSpec() {
     '/api/v1/auth/refresh': { post: { summary: 'Rotate Refresh Session & Mint Access JWT', responses: { '200': okJson('Refreshed session', ref('AuthUser')) } } },
     '/api/v1/auth/logout': { post: { summary: 'Revoke Refresh Session & Logout', responses: { '200': { description: 'Logged out' } } } },
     '/api/v1/auth/me': { get: { summary: 'Current User', responses: { '200': okJson('Session user', ref('AuthUser')) } } },
+    '/api/v1/auth/2fa/status': { get: { summary: '2FA Status', responses: { '200': okJson('TOTP status', ref('TotpStatusResponse')) } } },
+    '/api/v1/auth/2fa/setup': { post: { summary: 'Initialize TOTP 2FA Secret', responses: { '200': okJson('Setup secret', ref('TotpSetupResponse')) } } },
+    '/api/v1/auth/2fa/enable': { post: { summary: 'Verify and Enable TOTP 2FA', requestBody: jsonBody('TotpCodeRequest'), responses: { '200': okJson('Enabled', ref('TotpStatusResponse')) } } },
+    '/api/v1/auth/2fa/disable': { post: { summary: 'Disable TOTP 2FA', requestBody: jsonBody('TotpCodeRequest'), responses: { '200': okJson('Disabled', ref('TotpStatusResponse')) } } },
     '/api/v1/orgs/me': {
       get: { summary: 'Current Organization & Client Grants', responses: { '200': okJson('Org context', ref('Organization')) } },
       patch: { summary: 'Update Organization Settings', requestBody: jsonBody('UpdateOrg'), responses: { '200': okJson('Updated org', ref('Organization')) } },
@@ -110,6 +114,27 @@ function buildSpec() {
     '/api/v1/media/upload-url': { post: { summary: 'Request Presigned Upload URL', requestBody: jsonBody('UploadUrlRequest'), responses: { '201': okJson('Upload URL', ref('UploadUrlResponse')) } } },
     '/api/v1/media/{id}/complete': { post: { summary: 'Complete Upload & Enqueue Processing', requestBody: jsonBody('CompleteUploadRequest'), responses: { '200': okJson('Updated media', ref('MediaAsset')) } } },
     '/api/v1/media/{id}/approval': { patch: { summary: 'Update Moderation Approval', requestBody: jsonBody('UpdateMediaApproval'), responses: { '200': okJson('Updated media', ref('MediaAsset')) } } },
+    '/api/v1/media/{id}/variants': {
+      get: { summary: 'List Orientation Variants', responses: { '200': okJson('Variants', { type: 'object', properties: { items: { type: 'array', items: ref('MediaAssetVariant') } } }) } },
+      post: { summary: 'Create Orientation Variant Upload URL', requestBody: jsonBody('CreateMediaVariantRequest'), responses: { '201': { description: 'Variant & upload URL' } } },
+    },
+    '/api/v1/media/{id}/variants/{variantId}/complete': { post: { summary: 'Finalize Media Variant', requestBody: jsonBody('CompleteMediaVariantRequest'), responses: { '200': okJson('Variant', ref('MediaAssetVariant')) } } },
+    '/api/v1/media/{id}/version': { post: { summary: 'Create Next Asset Version', responses: { '201': { description: 'New asset version & upload URL' } } } },
+    '/api/v1/feeds': {
+      get: { summary: 'List Server-Polled Data Feeds', responses: { '200': okJson('Feeds', { type: 'object', properties: { items: { type: 'array', items: ref('DataFeed') } } }) } },
+      post: { summary: 'Create Data Feed', requestBody: jsonBody('CreateDataFeed'), responses: { '201': okJson('Feed', ref('DataFeed')) } },
+    },
+    '/api/v1/feeds/{id}': {
+      patch: { summary: 'Update Data Feed', requestBody: jsonBody('UpdateDataFeed'), responses: { '200': okJson('Feed', ref('DataFeed')) } },
+      delete: { summary: 'Delete Data Feed', responses: { '200': { description: 'Deleted' } } },
+    },
+    '/api/v1/feeds/{id}/refresh': { post: { summary: 'Poll Data Feed Now', responses: { '200': okJson('Feed', ref('DataFeed')) } } },
+    '/api/v1/triggers': {
+      get: { summary: 'List Event Triggers', responses: { '200': okJson('Triggers', { type: 'object', properties: { items: { type: 'array', items: ref('ScreenTrigger') } } }) } },
+      post: { summary: 'Create Event Trigger', requestBody: jsonBody('CreateScreenTrigger'), responses: { '201': okJson('Trigger', ref('CreateScreenTriggerResponse')) } },
+    },
+    '/api/v1/triggers/{id}': { delete: { summary: 'Delete Event Trigger', responses: { '200': { description: 'Deleted' } } } },
+    '/api/v1/triggers/{key}/fire': { post: { summary: 'Fire Trigger Override Schedule', responses: { '200': okJson('Fired trigger', ref('FireTriggerResponse')) } } },
     '/api/v1/playlists': {
       get: { summary: 'List Playlists', responses: { '200': okJson('Playlists', { type: 'object', properties: { items: { type: 'array', items: ref('Playlist') } } }) } },
       post: { summary: 'Create Playlist', requestBody: jsonBody('CreatePlaylist'), responses: { '201': okJson('Created playlist', ref('Playlist')) } },
@@ -133,6 +158,9 @@ function buildSpec() {
     '/api/v1/screens/{id}/preview-pop': { post: { summary: 'Admin Preview Simulated PoP', requestBody: jsonBody('PopBatchRequest'), responses: { '200': { description: 'Recorded' } } } },
     '/api/v1/screens/{id}/preview-heartbeat': { post: { summary: 'Admin Preview Simulated Heartbeat', requestBody: jsonBody('HeartbeatRequest'), responses: { '200': { description: 'OK' } } } },
     '/api/v1/screens/{id}/commands': { post: { summary: 'Dispatch Remote Device Command', requestBody: jsonBody('SendScreenCommand'), responses: { '201': okJson('Command', ref('ScreenCommand')) } } },
+    '/api/v1/screens/{id}/usb-pack': { post: { summary: 'Generate Signed USB Offline Recovery Pack', responses: { '200': okJson('USB pack', ref('UsbRecoveryPack')) } } },
+    '/api/v1/programmatic/vast/preview': { post: { summary: 'Preview VAST 4.x Ad Parse & Fallback', responses: { '200': okJson('VAST parse result', ref('VastParseResult')) } } },
+    '/api/v1/device/programmatic-fill': { get: { summary: 'Fetch Programmatic VAST Fill for Unsold Slots', responses: { '200': okJson('VAST fill result', ref('VastParseResult')) } } },
     '/api/v1/groups': {
       get: { summary: 'List Screen Groups', responses: { '200': okJson('Groups', { type: 'object', properties: { items: { type: 'array', items: ref('ScreenGroup') } } }) } },
       post: { summary: 'Create Screen Group', requestBody: jsonBody('CreateScreenGroup'), responses: { '201': okJson('Group', ref('ScreenGroup')) } },

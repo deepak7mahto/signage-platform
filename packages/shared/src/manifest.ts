@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { CreativeConfigSchema, MediaTypeSchema } from './creatives.js';
 import { OrientationSchema, ScreenLayoutConfigSchema } from './screens.js';
+import { PlaylistLoopModeSchema } from './stage3.js';
 
 // --- Device Manifest ---
 export const ManifestItemSchema = z.object({
@@ -13,6 +14,7 @@ export const ManifestItemSchema = z.object({
   sizeBytes: z.number().int().nonnegative(),
   durationMs: z.number().int().positive(),
   sortOrder: z.number().int().nonnegative(),
+  weight: z.number().int().positive().optional(),
   width: z.number().int().positive().nullable().optional(),
   height: z.number().int().positive().nullable().optional(),
   appConfig: CreativeConfigSchema.nullable().optional(),
@@ -38,6 +40,7 @@ export const ManifestPlaylistSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   version: z.number().int().nonnegative(),
+  loopMode: PlaylistLoopModeSchema.optional(),
   items: z.array(ManifestItemSchema),
 });
 export type ManifestPlaylist = z.infer<typeof ManifestPlaylistSchema>;
@@ -56,6 +59,7 @@ export const DeviceManifestSchema = z.object({
   schedules: z.array(ManifestScheduleSchema).default([]),
   playlists: z.record(z.string(), ManifestPlaylistSchema).default({}),
   layout: ScreenLayoutConfigSchema.optional(),
+  feeds: z.record(z.string(), z.unknown()).optional(),
 });
 export type DeviceManifest = z.infer<typeof DeviceManifestSchema>;
 

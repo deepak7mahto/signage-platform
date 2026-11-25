@@ -61,6 +61,8 @@ export const users = pgTable('users', {
   name: text('name').notNull(),
   passwordHash: text('password_hash').notNull(),
   role: text('role').notNull().default('admin'),
+  totpSecret: text('totp_secret'),
+  totpEnabled: boolean('totp_enabled').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -124,6 +126,8 @@ export const mediaAssets = pgTable('media_assets', {
   validUntil: text('valid_until'),
   tags: jsonb('tags').$type<string[]>().notNull().default([]),
   sharedWithClients: boolean('shared_with_clients').notNull().default(false),
+  version: integer('version').notNull().default(1),
+  parentAssetId: uuid('parent_asset_id'),
   appConfig: jsonb('app_config').$type<CreativeConfig | null>(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
@@ -136,6 +140,7 @@ export const playlists = pgTable('playlists', {
   name: text('name').notNull(),
   description: text('description'),
   version: integer('version').notNull().default(1),
+  loopMode: text('loop_mode').notNull().default('sequential'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
@@ -150,6 +155,7 @@ export const playlistItems = pgTable('playlist_items', {
     .references(() => mediaAssets.id, { onDelete: 'cascade' }),
   sortOrder: integer('sort_order').notNull(),
   durationMs: integer('duration_ms').notNull().default(10000),
+  weight: integer('weight').notNull().default(100),
 });
 
 export const screens = pgTable('screens', {
@@ -304,3 +310,5 @@ export const popHourlyRollups = pgTable(
     }),
   ],
 );
+
+export * from './schema-stage3.js';

@@ -13,7 +13,7 @@ import {
 } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
 
 export function LoginPage() {
   const [searchParams] = useSearchParams();
@@ -22,6 +22,8 @@ export function LoginPage() {
 
   const [email, setEmail] = useState(import.meta.env.DEV ? 'admin@signage.local' : '');
   const [password, setPassword] = useState(import.meta.env.DEV ? 'admin12345' : '');
+  const [totpCode, setTotpCode] = useState('');
+  const [needsTotp, setNeedsTotp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -30,12 +32,15 @@ export function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const { user } = await api.login(email, password);
+      const { user } = await api.login(email, password, needsTotp && totpCode.trim() ? totpCode.trim() : undefined);
       queryClient.setQueryData(['auth', 'me'], { user });
       const next = searchParams.get('next');
       const safeNext = next && next.startsWith('/') ? next : '/screens';
       navigate(safeNext, { replace: true });
     } catch (err) {
+      if (err instanceof ApiError && err.requiresTotp) {
+        setNeedsTotp(true);
+      }
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
@@ -80,6 +85,23 @@ export function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
+
+            {needsTotp && (
+              <div className="space-y-1.5">
+                <Label htmlFor="login-totp">2FA Authenticator Code (6 digits)</Label>
+                <Input
+                  id="login-totp"
+                  type="text"
+                  required
+                  maxLength={6}
+                  pattern="\d{6}"
+                  placeholder="123456"
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="font-mono tracking-widest"
+                />
+              </div>
+            )}
 
             {error && (
               <div className="rounded-md border border-destructive/40 bg-destructive/15 px-3 py-2 text-xs text-red-300">

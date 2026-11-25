@@ -69,9 +69,13 @@ signage-platform/
 │   ├── worker-media/      # pg-boss + FFmpeg thumbnailer & H.264/HEVC transcode pipeline
 │   ├── cms-web/           # React 19 + shadcn/ui + Radix UI admin CMS (URL-driven state)
 │   ├── player-web-sim/    # Browser Virtual Screen PWA (IndexedDB cache, addons, PoP, screenshots)
+│   ├── player-windows/    # Windows Tauri v2 player + Session 0 Rust Watchdog service
+│   ├── player-tv/         # Samsung Tizen (SSSP) & LG webOS (SCAP) signage player
 │   └── player-android/    # Native Kotlin + Media3 (ExoPlayer) 4K player & Device Owner kiosk
 ├── packages/
-│   └── shared/            # Shared Zod contracts, Creative Type Registry, schedule resolver
+│   ├── shared/            # Shared Zod contracts, Creative Type Registry, SOV/VAST/scheduler
+│   ├── player-core/       # Headless manifest sync, command ring buffer, watchdog, backoff
+│   └── player-web-shell/  # Shared React stage, diagnostics HUD, pairing & creative views
 ├── scripts/               # Strict code-rules checker (<400 lines, zero `any`) & OpenAPI generator
 ├── docs/                  # Architecture notes, roadmap, & generated OpenAPI 3.1 JSON spec
 ├── infra/

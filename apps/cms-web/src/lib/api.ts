@@ -7,11 +7,16 @@ import type {
   CreateAppAsset,
   CreateClientOrg,
   CreateConfigProfile,
+  CreateDataFeed,
   CreatePlaylist,
   CreateSchedule,
   CreateScreenGroup,
+  CreateScreenTrigger,
+  CreateScreenTriggerResponse,
   CreateSite,
+  DataFeed,
   DeviceConfigProfile,
+  FireTriggerResponse,
   MediaAsset,
   Organization,
   PairClaimRequest,
@@ -26,7 +31,9 @@ import type {
   ScreenCommand,
   ScreenDetailResponse,
   ScreenGroup,
+  ScreenTrigger,
   Site,
+  TotpSetupResponse,
   UpdateMediaAsset,
   UpdateOrg,
   UpdatePlaylist,
@@ -36,13 +43,17 @@ import type {
   UpdateSite,
   UploadUrlRequest,
   UploadUrlResponse,
+  UsbRecoveryPack,
+  VastParseResult,
 } from '@signage/shared';
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  requiresTotp?: boolean;
+  constructor(status: number, message: string, requiresTotp?: boolean) {
     super(message);
     this.status = status;
+    this.requiresTotp = requiresTotp;
   }
 }
 
@@ -97,13 +108,15 @@ async function request<T>(path: string, init?: RequestInit, retried = false): Pr
 
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
+    let requiresTotp = false;
     try {
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json()) as { error?: string; requiresTotp?: boolean };
       if (data.error) message = data.error;
+      if (data.requiresTotp) requiresTotp = true;
     } catch {
       // ignore non-json error body
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, requiresTotp);
   }
 
   return (await res.json()) as T;
@@ -111,10 +124,10 @@ async function request<T>(path: string, init?: RequestInit, retried = false): Pr
 
 export const api = {
   me: () => request<{ user: AuthUser }>('/auth/me'),
-  login: (email: string, password: string) =>
+  login: (email: string, password: string, totpCode?: string) =>
     request<{ user: AuthUser }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(totpCode ? { email, password, totpCode } : { email, password }),
     }),
   logout: () => request<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
 
@@ -296,6 +309,50 @@ export const api = {
         body: JSON.stringify(at ? { at } : {}),
       },
     ),
+
+  get2faStatus: () => request<{ enabled: boolean }>('/auth/2fa/status'),
+  setup2fa: () => request<TotpSetupResponse>('/auth/2fa/setup', { method: 'POST' }),
+  enable2fa: (code: string) =>
+    request<{ enabled: boolean }>('/auth/2fa/enable', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
+  disable2fa: (code: string) =>
+    request<{ enabled: boolean }>('/auth/2fa/disable', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
+
+  listFeeds: () => request<{ items: DataFeed[] }>('/feeds'),
+  createFeed: (payload: CreateDataFeed) =>
+    request<{ feed: DataFeed }>('/feeds', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  refreshFeed: (id: string) => request<{ feed: DataFeed }>(`/feeds/${id}/refresh`, { method: 'POST' }),
+  deleteFeed: (id: string) => request<{ ok: boolean }>(`/feeds/${id}`, { method: 'DELETE' }),
+
+  listTriggers: () => request<{ items: ScreenTrigger[] }>('/triggers'),
+  createTrigger: (payload: CreateScreenTrigger) =>
+    request<CreateScreenTriggerResponse>('/triggers', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  deleteTrigger: (id: string) => request<{ ok: boolean }>(`/triggers/${id}`, { method: 'DELETE' }),
+  fireTrigger: (key: string, secret: string) =>
+    request<FireTriggerResponse>(`/triggers/${encodeURIComponent(key)}/fire`, {
+      method: 'POST',
+      headers: { 'X-Trigger-Secret': secret },
+      body: JSON.stringify({}),
+    }),
+
+  generateUsbPack: (screenId: string) =>
+    request<UsbRecoveryPack>(`/screens/${screenId}/usb-pack`, { method: 'POST' }),
+  previewVast: (payload: { url?: string; xml?: string }) =>
+    request<VastParseResult>('/programmatic/vast/preview', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 };
 
 export function formatBytes(bytes: number): string {

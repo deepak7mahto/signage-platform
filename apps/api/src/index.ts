@@ -11,16 +11,21 @@ import { startQueue, stopQueue } from './lib/queue.js';
 import { ensureBucketExists } from './lib/s3.js';
 import { analyticsRoutes } from './routes/analytics.js';
 import { auditRoutes } from './routes/audit.js';
+import { auth2faRoutes } from './routes/auth-2fa.js';
 import { authRoutes } from './routes/auth.js';
 import { deviceRoutes } from './routes/device.js';
+import { extensionRoutes } from './routes/extensions.js';
+import { feedRoutes } from './routes/feeds.js';
 import { groupRoutes } from './routes/groups.js';
 import { healthRoutes } from './routes/health.js';
+import { mediaVariantRoutes } from './routes/media-variants.js';
 import { mediaRoutes } from './routes/media.js';
 import { orgRoutes } from './routes/orgs.js';
 import { playlistRoutes } from './routes/playlists.js';
 import { scheduleRoutes } from './routes/schedules.js';
 import { screenRoutes } from './routes/screens.js';
 import { siteRoutes } from './routes/sites.js';
+import { triggerRoutes } from './routes/triggers.js';
 
 async function main() {
   const app = Fastify({
@@ -60,11 +65,16 @@ async function main() {
 
   await app.register(healthRoutes);
   await app.register(authRoutes);
+  await app.register(auth2faRoutes);
   await app.register(orgRoutes);
   await app.register(siteRoutes);
+  await app.register(feedRoutes);
+  await app.register(triggerRoutes);
   await app.register(mediaRoutes);
+  await app.register(mediaVariantRoutes);
   await app.register(playlistRoutes);
   await app.register(screenRoutes);
+  await app.register(extensionRoutes);
   await app.register(groupRoutes);
   await app.register(scheduleRoutes);
   await app.register(analyticsRoutes);

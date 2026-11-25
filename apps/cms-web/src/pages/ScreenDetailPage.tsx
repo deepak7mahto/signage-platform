@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   CalendarSearch,
   Camera,
+  Download,
   ExternalLink,
   Monitor,
   Moon,
@@ -41,6 +42,18 @@ export function ScreenDetailPage() {
   const orgParam = searchParams.get('org');
   const simOpen = searchParams.get('modal') === 'simulate';
   const backUrl = orgParam ? `/screens?org=${encodeURIComponent(orgParam)}` : '/screens';
+
+  const downloadUsbPack = async () => {
+    if (!id) return;
+    const pack = await api.generateUsbPack(id);
+    const blob = new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `usb-recovery-${id.slice(0, 8)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const setSimModal = (open: boolean) => {
     const next = new URLSearchParams(searchParams);
@@ -120,6 +133,10 @@ export function ScreenDetailPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => void downloadUsbPack()}>
+            <Download className="h-4 w-4" />
+            USB Recovery Pack
+          </Button>
           <Button variant="outline" onClick={() => setSimModal(true)}>
             <CalendarSearch className="h-4 w-4" />
             Simulate Schedule

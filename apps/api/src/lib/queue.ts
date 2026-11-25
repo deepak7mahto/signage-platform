@@ -3,13 +3,16 @@ import PgBoss from 'pg-boss';
 import { isPrivateOrBlockedHost } from '@signage/shared/creatives';
 import { config } from '../config.js';
 import { ensureFuturePopPartitions } from '../db/bootstrap.js';
-import { pgClient } from '../db/index.js';
+import { db, pgClient } from '../db/index.js';
+import { dataFeeds } from '../db/schema.js';
+import { refreshFeedRow } from '../routes/feeds.js';
 
 export const MEDIA_PROCESS_QUEUE = 'media.process';
 const POP_PARTITION_QUEUE = 'pop.partitions.maintain';
 const POP_ROLLUP_QUEUE = 'pop.rollups.aggregate';
 const POP_RETENTION_QUEUE = 'pop.partitions.retention';
 const FLEET_ALERT_SWEEP_QUEUE = 'fleet.alerts.sweep';
+const FEEDS_POLL_QUEUE = 'feeds.poll.sweep';
 const BOOT_GRACE_MS = 5 * 60_000;
 
 let boss: PgBoss | null = null;
@@ -159,6 +162,18 @@ async function dropExpiredPopPartitions(): Promise<void> {
   }
 }
 
+async function runFeedsPollSweep(): Promise<void> {
+  const feeds = await db.select().from(dataFeeds);
+  const now = Date.now();
+  for (const feed of feeds) {
+    const due =
+      !feed.lastFetchedAt || now - feed.lastFetchedAt.getTime() >= feed.pollIntervalSec * 1000;
+    if (due) {
+      await refreshFeedRow(feed);
+    }
+  }
+}
+
 export async function startQueue(): Promise<void> {
   startedAtMs = Date.now();
   boss = new PgBoss(config.DATABASE_URL);
@@ -168,11 +183,13 @@ export async function startQueue(): Promise<void> {
   await boss.createQueue(POP_ROLLUP_QUEUE);
   await boss.createQueue(POP_RETENTION_QUEUE);
   await boss.createQueue(FLEET_ALERT_SWEEP_QUEUE);
+  await boss.createQueue(FEEDS_POLL_QUEUE);
 
   await boss.schedule(POP_PARTITION_QUEUE, '0 2 * * *', {});
   await boss.schedule(POP_ROLLUP_QUEUE, '*/15 * * * *', {});
   await boss.schedule(POP_RETENTION_QUEUE, '30 3 * * *', {});
   await boss.schedule(FLEET_ALERT_SWEEP_QUEUE, '*/3 * * * *', {});
+  await boss.schedule(FEEDS_POLL_QUEUE, '*/2 * * * *', {});
 
   await boss.work(POP_PARTITION_QUEUE, async () => {
     await ensureFuturePopPartitions(6);
@@ -185,6 +202,9 @@ export async function startQueue(): Promise<void> {
   });
   await boss.work(FLEET_ALERT_SWEEP_QUEUE, async () => {
     await runFleetAlertSweep();
+  });
+  await boss.work(FEEDS_POLL_QUEUE, async () => {
+    await runFeedsPollSweep();
   });
 }
 

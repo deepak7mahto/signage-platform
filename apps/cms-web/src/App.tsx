@@ -6,6 +6,7 @@ import { AuditLogsPage } from './pages/AuditLogsPage';
 import { LoginPage } from './pages/LoginPage';
 import { MediaPage } from './pages/MediaPage';
 import { MultiScreenWallPage } from './pages/MultiScreenWallPage';
+import { OperationsPage } from './pages/OperationsPage';
 import { PlaylistDetailPage } from './pages/PlaylistDetailPage';
 import { PlaylistsPage } from './pages/PlaylistsPage';
 import { SchedulesPage } from './pages/SchedulesPage';
@@ -40,6 +41,7 @@ export function App() {
               <Route path="/media" element={<MediaPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/audit-logs" element={<AuditLogsPage />} />
+              <Route path="/ops" element={<OperationsPage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/screens" replace />} />
