@@ -17,9 +17,10 @@ class AssetCacheManager(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
     private val rootDir = File(context.filesDir, "signage_cache").apply { mkdirs() }
-    private val cacheDir = File(rootDir, "media").apply { mkdirs() }
+    private val blobDir = File(rootDir, "blobs").apply { mkdirs() }
     private val tmpDir = File(rootDir, "tmp").apply { mkdirs() }
     private val manifestFile = File(rootDir, "manifest.json")
+    private val manifestLkgFile = File(rootDir, "manifest_lkg.json")
     private val manifestTmpFile = File(rootDir, "manifest.json.tmp")
 
     fun saveManifest(manifest: DeviceManifest) {
@@ -32,25 +33,46 @@ class AssetCacheManager(
         return runCatching { json.decodeFromString<DeviceManifest>(manifestFile.readText()) }.getOrNull()
     }
 
-    fun getCachedFile(assetId: String): File? {
-        val file = File(cacheDir, assetId)
+    fun promoteToLkg(manifest: DeviceManifest) {
+        val tmp = File(rootDir, "manifest_lkg.tmp")
+        tmp.writeText(json.encodeToString(manifest))
+        tmp.renameTo(manifestLkgFile)
+    }
+
+    fun rollbackToLkg(): DeviceManifest? {
+        if (!manifestLkgFile.exists()) return null
+        val lkg = runCatching {
+            json.decodeFromString<DeviceManifest>(manifestLkgFile.readText())
+        }.getOrNull() ?: return null
+        saveManifest(lkg)
+        return lkg
+    }
+
+    fun isBinaryType(type: String): Boolean = type == "video" || type == "image"
+
+    fun getCachedBlob(sha256: String): File? {
+        if (sha256.isBlank()) return null
+        val file = File(blobDir, sha256)
         return if (file.exists() && file.length() > 0L) file else null
     }
 
-    suspend fun syncAssets(manifest: DeviceManifest): Int = withContext(Dispatchers.IO) {
-        val uniqueItems = linkedMapOf<String, ManifestItem>()
-        manifest.items.forEach { uniqueItems[it.assetId] = it }
-        manifest.playlists.values.forEach { pl ->
-            pl.items.forEach { uniqueItems[it.assetId] = it }
-        }
+    fun getCachedFileForItem(item: ManifestItem): File? {
+        if (!isBinaryType(item.type)) return null
+        return getCachedBlob(item.sha256)
+    }
 
-        for (item in uniqueItems.values) {
-            val target = File(cacheDir, item.assetId)
-            if (target.exists() && sha256Of(target) == item.sha256) {
+    suspend fun syncAssets(manifest: DeviceManifest): Int = withContext(Dispatchers.IO) {
+        val uniqueItems = collectAllItems(manifest)
+
+        for (item in uniqueItems) {
+            if (!isBinaryType(item.type) || item.sha256.isBlank()) continue
+            val target = File(blobDir, item.sha256)
+            // Content-addressed blob already present: skip redundant re-hashing
+            if (target.exists() && target.length() > 0L) {
                 continue
             }
 
-            val part = File(tmpDir, "${item.assetId}.part")
+            val part = File(tmpDir, "${item.sha256}.part")
             val downloaded = downloadWithResume(item.url, part)
             if (!downloaded) continue
 
@@ -62,21 +84,39 @@ class AssetCacheManager(
             }
         }
 
-        // Garbage collect unreferenced assets to protect eMMC longevity
-        val keepIds = uniqueItems.keys
-        cacheDir.listFiles()?.forEach { file ->
-            if (!keepIds.contains(file.name)) {
+        // Garbage collect keeping union of active + LKG manifest sha256 blobs
+        val keepHashes = uniqueItems.filter { isBinaryType(it.type) }.map { it.sha256 }.toMutableSet()
+        rollbackPreviewHashes()?.let { keepHashes.addAll(it) }
+        blobDir.listFiles()?.forEach { file ->
+            if (!keepHashes.contains(file.name)) {
                 file.delete()
             }
         }
 
-        cacheDir.listFiles()?.count { it.isFile } ?: 0
+        blobDir.listFiles()?.count { it.isFile } ?: 0
     }
 
     fun clearAll() {
-        cacheDir.listFiles()?.forEach { it.delete() }
+        blobDir.listFiles()?.forEach { it.delete() }
         tmpDir.listFiles()?.forEach { it.delete() }
         manifestFile.delete()
+        manifestLkgFile.delete()
+    }
+
+    private fun rollbackPreviewHashes(): Set<String>? {
+        if (!manifestLkgFile.exists()) return null
+        val lkg = runCatching { json.decodeFromString<DeviceManifest>(manifestLkgFile.readText()) }.getOrNull()
+            ?: return null
+        return collectAllItems(lkg).map { it.sha256 }.toSet()
+    }
+
+    private fun collectAllItems(manifest: DeviceManifest): List<ManifestItem> {
+        val map = linkedMapOf<String, ManifestItem>()
+        manifest.items.forEach { map[it.sha256.ifBlank { it.assetId }] = it }
+        manifest.playlists.values.forEach { pl ->
+            pl.items.forEach { map[it.sha256.ifBlank { it.assetId }] = it }
+        }
+        return map.values.toList()
     }
 
     private fun downloadWithResume(url: String, partFile: File): Boolean {
@@ -88,13 +128,8 @@ class AssetCacheManager(
             }
 
             http.newCall(reqBuilder.build()).execute().use { resp ->
-                if (resp.code == 416) {
-                    // Already fully downloaded
-                    return true
-                }
-                if (!resp.isSuccessful) {
-                    return false
-                }
+                if (resp.code == 416) return true
+                if (!resp.isSuccessful) return false
                 val isPartial = resp.code == 206 && existingLen > 0L
                 val body = resp.body ?: return false
                 body.byteStream().use { input ->

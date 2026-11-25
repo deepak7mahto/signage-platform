@@ -47,6 +47,11 @@
         </receiver>
 
         <receiver
+            android:name=".mdm.PackageInstallReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <receiver
             android:name=".mdm.SignageDeviceAdminReceiver"
             android:description="@string/device_admin_desc"
             android:exported="true"

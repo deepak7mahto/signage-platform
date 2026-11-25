@@ -19,6 +19,9 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 import com.signageos.player.data.AckMessage
+import com.signageos.player.data.ClaimProvisionRequest
+import com.signageos.player.data.ClaimProvisionResponse
+import com.signageos.player.data.CommandClaimResponse
 import com.signageos.player.data.DeviceManifest
 import com.signageos.player.data.HeartbeatRequest
 import com.signageos.player.data.PairPollRequest
@@ -27,9 +30,21 @@ import com.signageos.player.data.PairRequestResponse
 import com.signageos.player.data.PongMessage
 import com.signageos.player.data.PopBatchRequest
 import com.signageos.player.data.PopEventInput
+import com.signageos.player.data.ScreenCommandDto
 
 sealed class ManifestFetchResult {
-    data class Success(val manifest: DeviceManifest, val clockOffsetMs: Long) : ManifestFetchResult()
+    data class Success(
+        val manifest: DeviceManifest,
+        val etag: String?,
+        val clockOffsetMs: Long,
+    ) : ManifestFetchResult()
+
+    data class NotModified(
+        val etag: String?,
+        val clockOffsetMs: Long?,
+    ) : ManifestFetchResult()
+
+    data class Revoked(val message: String) : ManifestFetchResult()
     data object Unauthorized : ManifestFetchResult()
     data object NetworkError : ManifestFetchResult()
 }
@@ -75,30 +90,93 @@ class SignageApiClient {
             }.getOrNull()
         }
 
-    suspend fun fetchManifest(baseUrl: String, deviceToken: String): ManifestFetchResult =
+    suspend fun claimProvision(baseUrl: String, provisionToken: String): ClaimProvisionResponse? =
         withContext(Dispatchers.IO) {
-            try {
+            runCatching {
+                val payload = json.encodeToString(ClaimProvisionRequest(provisionToken = provisionToken.trim()))
                 val req = Request.Builder()
-                    .url("${baseUrl.trimEnd('/')}/api/v1/device/manifest")
-                    .header("Authorization", "Bearer $deviceToken")
-                    .get()
+                    .url("${baseUrl.trimEnd('/')}/api/v1/device/provision/claim")
+                    .post(payload.toRequestBody(jsonMediaType))
                     .build()
                 http.newCall(req).execute().use { resp ->
-                    if (resp.code == 401) return@use ManifestFetchResult.Unauthorized
-                    if (!resp.isSuccessful) return@use ManifestFetchResult.NetworkError
-                    val body = resp.body?.string() ?: return@use ManifestFetchResult.NetworkError
-                    val manifest = json.decodeFromString<DeviceManifest>(body)
-                    val offset = runCatching {
-                        Instant.parse(manifest.serverTime).toEpochMilli() - System.currentTimeMillis()
-                    }.getOrDefault(0L)
-                    ManifestFetchResult.Success(manifest, offset)
+                    if (!resp.isSuccessful) return@use null
+                    val body = resp.body?.string() ?: return@use null
+                    json.decodeFromString<ClaimProvisionResponse>(body)
                 }
-            } catch (_: Throwable) {
-                ManifestFetchResult.NetworkError
-            }
+            }.getOrNull()
         }
 
-    suspend fun sendHeartbeat(baseUrl: String, deviceToken: String, payload: HeartbeatRequest) =
+    suspend fun fetchManifest(
+        baseUrl: String,
+        deviceToken: String,
+        etag: String? = null,
+    ): ManifestFetchResult = withContext(Dispatchers.IO) {
+        try {
+            val reqBuilder = Request.Builder()
+                .url("${baseUrl.trimEnd('/')}/api/v1/device/manifest")
+                .header("Authorization", "Bearer $deviceToken")
+                .get()
+            if (!etag.isNullOrBlank()) {
+                reqBuilder.header("If-None-Match", etag)
+            }
+
+            http.newCall(reqBuilder.build()).execute().use { resp ->
+                val respEtag = resp.header("ETag") ?: etag
+                val serverTimeHeader = resp.header("X-Server-Time")
+                val headerOffset = serverTimeHeader?.let {
+                    runCatching { Instant.parse(it).toEpochMilli() - System.currentTimeMillis() }.getOrNull()
+                }
+
+                if (resp.code == 304) {
+                    return@use ManifestFetchResult.NotModified(respEtag, headerOffset)
+                }
+                if (resp.code == 401) {
+                    return@use ManifestFetchResult.Unauthorized
+                }
+                if (resp.code == 410) {
+                    val body = resp.body?.string().orEmpty()
+                    val code = runCatching {
+                        json.parseToJsonElement(body).jsonObject["errorCode"]?.jsonPrimitive?.content
+                    }.getOrNull()
+                    if (code == "DEVICE_REVOKED") {
+                        val msg = runCatching {
+                            json.parseToJsonElement(body).jsonObject["message"]?.jsonPrimitive?.content
+                        }.getOrNull() ?: "Device revoked"
+                        return@use ManifestFetchResult.Revoked(msg)
+                    }
+                    return@use ManifestFetchResult.NetworkError
+                }
+                if (!resp.isSuccessful) return@use ManifestFetchResult.NetworkError
+
+                val body = resp.body?.string() ?: return@use ManifestFetchResult.NetworkError
+                val manifest = json.decodeFromString<DeviceManifest>(body)
+                val offset = headerOffset ?: runCatching {
+                    Instant.parse(manifest.serverTime).toEpochMilli() - System.currentTimeMillis()
+                }.getOrDefault(0L)
+                ManifestFetchResult.Success(manifest, respEtag, offset)
+            }
+        } catch (_: Throwable) {
+            ManifestFetchResult.NetworkError
+        }
+    }
+
+    suspend fun claimPendingCommands(baseUrl: String, deviceToken: String): List<ScreenCommandDto> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val req = Request.Builder()
+                    .url("${baseUrl.trimEnd('/')}/api/v1/device/commands/claim")
+                    .header("Authorization", "Bearer $deviceToken")
+                    .post("{}".toRequestBody(jsonMediaType))
+                    .build()
+                http.newCall(req).execute().use { resp ->
+                    if (!resp.isSuccessful) return@use emptyList()
+                    val body = resp.body?.string() ?: return@use emptyList()
+                    json.decodeFromString<CommandClaimResponse>(body).commands
+                }
+            }.getOrDefault(emptyList())
+        }
+
+    suspend fun sendHeartbeat(baseUrl: String, deviceToken: String, payload: HeartbeatRequest): Int =
         withContext(Dispatchers.IO) {
             runCatching {
                 val req = Request.Builder()
@@ -106,8 +184,8 @@ class SignageApiClient {
                     .header("Authorization", "Bearer $deviceToken")
                     .post(json.encodeToString(payload).toRequestBody(jsonMediaType))
                     .build()
-                http.newCall(req).execute().close()
-            }
+                http.newCall(req).execute().use { it.code }
+            }.getOrDefault(-1)
         }
 
     suspend fun uploadPopBatch(
@@ -160,12 +238,15 @@ class SignageApiClient {
         onCecPower: (commandId: String, state: String) -> Unit,
         onSetVolume: (commandId: String, level: Int) -> Unit,
         onReboot: (commandId: String) -> Unit,
+        onClearQuarantine: (commandId: String, assetId: String?) -> Unit,
+        onExitSafeMode: (commandId: String) -> Unit,
     ): WebSocket {
         val wsBase = baseUrl.trimEnd('/')
             .replaceFirst("https://", "wss://")
             .replaceFirst("http://", "ws://")
         val req = Request.Builder()
-            .url("$wsBase/ws/device?token=$deviceToken")
+            .url("$wsBase/ws/device")
+            .header("Authorization", "Bearer $deviceToken")
             .build()
 
         return http.newWebSocket(
@@ -204,16 +285,25 @@ class SignageApiClient {
                             "reboot" -> {
                                 if (commandId != null) onReboot(commandId)
                             }
+                            "clear_quarantine" -> {
+                                val assetId = obj["assetId"]?.jsonPrimitive?.content
+                                if (commandId != null) onClearQuarantine(commandId, assetId)
+                            }
+                            "exit_safe_mode" -> {
+                                if (commandId != null) onExitSafeMode(commandId)
+                            }
                         }
                     }
                 }
 
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                     onConnected(false)
+                    if (code == 4003) onRevoke()
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                     onConnected(false)
+                    if (response?.code == 410) onRevoke()
                 }
             },
         )

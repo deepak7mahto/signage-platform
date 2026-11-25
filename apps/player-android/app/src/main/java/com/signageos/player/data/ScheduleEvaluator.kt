@@ -44,7 +44,12 @@ object ScheduleEvaluator {
                         timeStr >= s.startTime || timeStr <= s.endTime
                     }
                 }
-                .maxByOrNull { it.priority }
+                .sortedWith(
+                    compareByDescending<ManifestSchedule> { it.priority }
+                        .thenByDescending { it.updatedAt ?: "" }
+                        .thenBy { it.id },
+                )
+                .firstOrNull()
 
             if (match != null) {
                 val pl = manifest.playlists.getValue(match.playlistId)

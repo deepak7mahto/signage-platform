@@ -1,93 +1,122 @@
 package com.signageos.player
 
+import com.signageos.player.data.ClockSyncEvaluator
 import com.signageos.player.data.DeviceManifest
-import com.signageos.player.data.ManifestItem
-import com.signageos.player.data.ManifestPlaylist
-import com.signageos.player.data.ManifestSchedule
 import com.signageos.player.data.ScheduleEvaluator
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
+import java.io.File
 import java.time.Instant
 
+@Serializable
+private data class ScheduleVectorExpected(
+    val playlistId: String?,
+    val scheduleName: String?,
+    val itemCount: Int,
+)
+
+@Serializable
+private data class ScheduleVectorCase(
+    val name: String,
+    val nowIso: String,
+    val manifest: DeviceManifest,
+    val expected: ScheduleVectorExpected,
+)
+
+@Serializable
+private data class ScheduleVectorFile(
+    val version: Int,
+    val cases: List<ScheduleVectorCase>,
+)
+
+@Serializable
+private data class ClockSyncVectorInput(
+    val durationsMs: List<Long>,
+    val nowMs: Long,
+    val clockOffsetMs: Long = 0L,
+    val epochMs: Long = 0L,
+    val currentIndex: Int? = null,
+    val currentPositionMs: Long? = null,
+)
+
+@Serializable
+private data class ClockSyncVectorExpected(
+    val itemIndex: Int,
+    val positionMs: Long,
+    val loopPositionMs: Long,
+    val totalDurationMs: Long,
+    val needsSeek: Boolean,
+)
+
+@Serializable
+private data class ClockSyncVectorCase(
+    val name: String,
+    val input: ClockSyncVectorInput,
+    val expected: ClockSyncVectorExpected? = null,
+)
+
+@Serializable
+private data class ClockSyncVectorFile(
+    val version: Int,
+    val seekThresholdMs: Long,
+    val cases: List<ClockSyncVectorCase>,
+)
+
 class ScheduleEvaluatorTest {
-    private fun item(id: String, title: String) = ManifestItem(
-        itemId = "item-$id",
-        assetId = "asset-$id",
-        title = title,
-        type = "video",
-        mimeType = "video/mp4",
-        sha256 = "abc",
-        sizeBytes = 1000L,
-        durationMs = 10000L,
-        sortOrder = 0,
-        url = "http://localhost:8080/media/$id.mp4",
-    )
+    private val json = Json { ignoreUnknownKeys = true }
 
-    @Test
-    fun `selects highest priority matching schedule in timezone`() {
-        val manifest = DeviceManifest(
-            screenId = "scr-1",
-            screenName = "Lobby TV",
-            timezone = "Asia/Kolkata",
-            playlistId = "pl-fallback",
-            playlistName = "Fallback",
-            items = listOf(item("1", "Fallback Ad")),
-            playlists = mapOf(
-                "pl-campaign" to ManifestPlaylist("pl-campaign", "Campaign", 1, listOf(item("2", "Campaign Ad"))),
-                "pl-override" to ManifestPlaylist("pl-override", "Override", 1, listOf(item("3", "Override Ad"))),
-            ),
-            schedules = listOf(
-                ManifestSchedule("s1", "Campaign", "pl-campaign", priority = 50, startTime = "09:00", endTime = "18:00"),
-                ManifestSchedule("s2", "Emergency", "pl-override", priority = 100, startTime = "09:00", endTime = "18:00"),
-            ),
-        )
-
-        // 2026-11-25 06:00 UTC == 11:30 Asia/Kolkata (Wednesday = 3)
-        val nowMs = Instant.parse("2026-11-25T06:00:00Z").toEpochMilli()
-        val resolved = ScheduleEvaluator.resolve(manifest, nowMs)
-
-        assertEquals("pl-override", resolved.playlistId)
-        assertEquals("Emergency", resolved.scheduleName)
-        assertEquals("Override Ad", resolved.items.first().title)
+    private fun resolveVectorsDir(): File {
+        var dir: File? = File(System.getProperty("user.dir") ?: ".").absoluteFile
+        while (dir != null) {
+            val candidate = File(dir, "conformance/vectors")
+            if (candidate.exists()) return candidate
+            dir = dir.parentFile
+        }
+        error("Could not locate conformance/vectors directory")
     }
 
     @Test
-    fun `supports overnight daypart wrap and falls back outside flight dates`() {
-        val manifest = DeviceManifest(
-            screenId = "scr-1",
-            screenName = "Lobby TV",
-            timezone = "UTC",
-            playlistId = "pl-fallback",
-            playlistName = "Fallback",
-            items = listOf(item("1", "Fallback Ad")),
-            playlists = mapOf(
-                "pl-night" to ManifestPlaylist("pl-night", "Night Loop", 1, listOf(item("2", "Night Ad"))),
-            ),
-            schedules = listOf(
-                ManifestSchedule(
-                    id = "s-night",
-                    name = "Night Wrap",
-                    playlistId = "pl-night",
-                    priority = 50,
-                    startTime = "22:00",
-                    endTime = "06:00",
-                    validFrom = "2026-11-24",
-                    validUntil = "2026-11-26",
-                ),
-            ),
-        )
+    fun `passes all schedule-resolution conformance vectors`() {
+        val file = File(resolveVectorsDir(), "schedule-resolution.json")
+        val vector = json.decodeFromString<ScheduleVectorFile>(file.readText())
+        assertEquals(true, vector.cases.isNotEmpty())
 
-        // 23:30 UTC on 2026-11-25 -> matches overnight wrap
-        val activeMs = Instant.parse("2026-11-25T23:30:00Z").toEpochMilli()
-        val activeResolved = ScheduleEvaluator.resolve(manifest, activeMs)
-        assertEquals("pl-night", activeResolved.playlistId)
-        assertEquals("Night Wrap", activeResolved.scheduleName)
+        for (tc in vector.cases) {
+            val nowMs = Instant.parse(tc.nowIso).toEpochMilli()
+            val resolved = ScheduleEvaluator.resolve(tc.manifest, nowMs)
+            assertEquals("playlistId mismatch for ${tc.name}", tc.expected.playlistId, resolved.playlistId)
+            assertEquals("scheduleName mismatch for ${tc.name}", tc.expected.scheduleName, resolved.scheduleName)
+            assertEquals("itemCount mismatch for ${tc.name}", tc.expected.itemCount, resolved.items.size)
+        }
+    }
 
-        // 2026-12-01 -> outside validUntil, falls back
-        val expiredMs = Instant.parse("2026-12-01T23:30:00Z").toEpochMilli()
-        val fallbackResolved = ScheduleEvaluator.resolve(manifest, expiredMs)
-        assertEquals("pl-fallback", fallbackResolved.playlistId)
-        assertNull(fallbackResolved.scheduleName)
+    @Test
+    fun `passes all clock-sync conformance vectors`() {
+        val file = File(resolveVectorsDir(), "clock-sync.json")
+        val vector = json.decodeFromString<ClockSyncVectorFile>(file.readText())
+        assertEquals(true, vector.cases.isNotEmpty())
+
+        for (tc in vector.cases) {
+            val actual = ClockSyncEvaluator.resolveCursor(
+                durationsMs = tc.input.durationsMs,
+                nowMs = tc.input.nowMs,
+                clockOffsetMs = tc.input.clockOffsetMs,
+                epochMs = tc.input.epochMs,
+                currentIndex = tc.input.currentIndex,
+                currentPositionMs = tc.input.currentPositionMs,
+                seekThresholdMs = vector.seekThresholdMs,
+            )
+            if (tc.expected == null) {
+                assertEquals("Expected null for ${tc.name}", null, actual)
+            } else {
+                assertEquals("itemIndex mismatch for ${tc.name}", tc.expected.itemIndex, actual?.itemIndex)
+                assertEquals("positionMs mismatch for ${tc.name}", tc.expected.positionMs, actual?.positionMs)
+                assertEquals("loopPositionMs mismatch for ${tc.name}", tc.expected.loopPositionMs, actual?.loopPositionMs)
+                assertEquals("totalDurationMs mismatch for ${tc.name}", tc.expected.totalDurationMs, actual?.totalDurationMs)
+                assertEquals("needsSeek mismatch for ${tc.name}", tc.expected.needsSeek, actual?.needsSeek)
+            }
+        }
     }
 }

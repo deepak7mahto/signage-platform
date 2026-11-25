@@ -25,6 +25,18 @@ data class PairPollResponse(
 )
 
 @Serializable
+data class ClaimProvisionRequest(
+    val provisionToken: String,
+)
+
+@Serializable
+data class ClaimProvisionResponse(
+    val screenId: String,
+    val screenName: String,
+    val deviceToken: String,
+)
+
+@Serializable
 data class ManifestItem(
     val itemId: String,
     val assetId: String,
@@ -35,6 +47,7 @@ data class ManifestItem(
     val sizeBytes: Long,
     val durationMs: Long,
     val sortOrder: Int,
+    val appConfig: JsonObject? = null,
     val url: String,
 )
 
@@ -49,6 +62,7 @@ data class ManifestSchedule(
     val endTime: String = "23:59",
     val validFrom: String? = null,
     val validUntil: String? = null,
+    val updatedAt: String? = null,
 )
 
 @Serializable
@@ -96,6 +110,28 @@ data class HeartbeatRequest(
     val manifestVersion: Int,
     val currentAssetId: String? = null,
     val hwInfo: JsonObject? = null,
+    val playbackState: String? = null,
+    val lastFrameAdvanceAt: String? = null,
+    val capabilities: List<String>? = null,
+)
+
+@Serializable
+data class ScreenCommandDto(
+    val id: String,
+    val screenId: String,
+    val command: String,
+    val payload: JsonObject? = null,
+    val status: String,
+    val detail: String? = null,
+    val createdAt: String,
+    val ackedAt: String? = null,
+    val expiresAt: String? = null,
+)
+
+@Serializable
+data class CommandClaimResponse(
+    val commands: List<ScreenCommandDto> = emptyList(),
+    val serverTime: String = "",
 )
 
 @Serializable

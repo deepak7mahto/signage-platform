@@ -24,6 +24,41 @@
         android:scaleType="fitCenter"
         android:visibility="gone" />
 
+    <!-- Isolated WebView Surface (WebPage / YouTube / HTML Apps) -->
+    <FrameLayout
+        android:id="@+id/webCreativeContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:visibility="gone" />
+
+    <!-- Watchdog Safe-Mode Slate Overlay -->
+    <LinearLayout
+        android:id="@+id/safeModeOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#09090B"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Safe Mode Active"
+            android:textColor="#FBBF24"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Playback halted after repeated crashes. Waiting for remote recovery."
+            android:textColor="#A1A1AA"
+            android:textSize="14sp" />
+    </LinearLayout>
+
     <!-- HDMI-CEC Standby Overlay -->
     <LinearLayout
         android:id="@+id/standbyOverlay"
