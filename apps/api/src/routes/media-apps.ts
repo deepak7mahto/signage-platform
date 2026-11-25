@@ -5,16 +5,30 @@ import {
   CreateAppAssetSchema,
   UpdateMediaAssetSchema,
   isBinaryMediaType,
+  isPrivateOrBlockedHost,
   validateCreativeConfig,
   type CreativeConfig,
   type MediaAsset,
 } from '@signage/shared';
+import { config } from '../config.js';
 import { db } from '../db/index.js';
 import { auditLogs, mediaAssets, playlistItems } from '../db/schema.js';
 import { sha256Hex } from '../lib/crypto.js';
 import { createPresignedGetUrl } from '../lib/s3.js';
+import { requireRole } from '../middleware/rbac.js';
 import { pushToScreensUsingPlaylist } from '../ws/gateway.js';
 import { requireAuth } from './auth.js';
+
+function checkAppUrlSafety(appConfig: CreativeConfig): string | null {
+  if (typeof appConfig.url !== 'string' || !appConfig.url.trim()) {
+    return null;
+  }
+  const allowHttpInDev = config.NODE_ENV !== 'production';
+  if (isPrivateOrBlockedHost(appConfig.url, { allowHttpInDev })) {
+    return 'Blocked or private URL host is not allowed';
+  }
+  return null;
+}
 
 export function registerMediaAppRoutes(
   app: FastifyInstance,
@@ -24,18 +38,25 @@ export function registerMediaAppRoutes(
     thumbnailUrl?: string | null,
   ) => MediaAsset,
 ): void {
-  app.post('/api/v1/media/app', { preHandler: requireAuth }, async (req, reply) => {
-    const parsed = CreateAppAssetSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: 'Invalid app/addon config', issues: parsed.error.issues });
-    }
+  app.post(
+    '/api/v1/media/app',
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    async (req, reply) => {
+      const parsed = CreateAppAssetSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ error: 'Invalid app/addon config', issues: parsed.error.issues });
+      }
 
-    const user = req.authUser!;
-    const { title, type, durationMs, appConfig } = parsed.data;
-    const checked = validateCreativeConfig(type, appConfig);
-    if (!checked.ok) {
-      return reply.code(400).send({ error: checked.error });
-    }
+      const user = req.authUser!;
+      const { title, type, durationMs, appConfig } = parsed.data;
+      const checked = validateCreativeConfig(type, appConfig);
+      if (!checked.ok) {
+        return reply.code(400).send({ error: checked.error });
+      }
+      const ssrfError = checkAppUrlSafety(checked.normalized);
+      if (ssrfError) {
+        return reply.code(400).send({ error: ssrfError });
+      }
 
     const id = crypto.randomUUID();
     const [created] = await db
@@ -73,7 +94,7 @@ export function registerMediaAppRoutes(
 
   app.patch<{ Params: { id: string } }>(
     '/api/v1/media/:id',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const parsed = UpdateMediaAssetSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -98,6 +119,10 @@ export function registerMediaAppRoutes(
           const checked = validateCreativeConfig(existing.type, parsed.data.appConfig);
           if (!checked.ok) {
             return reply.code(400).send({ error: checked.error });
+          }
+          const ssrfError = checkAppUrlSafety(checked.normalized);
+          if (ssrfError) {
+            return reply.code(400).send({ error: ssrfError });
           }
           nextConfig = checked.normalized;
         }

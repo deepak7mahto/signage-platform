@@ -12,6 +12,7 @@ import { db } from '../db/index.js';
 import { auditLogs, mediaAssets, playlistItems, playlists } from '../db/schema.js';
 import { createPresignedGetUrl } from '../lib/s3.js';
 import { pushToScreensUsingPlaylist } from '../ws/gateway.js';
+import { requireRole } from '../middleware/rbac.js';
 import { requireAuth } from './auth.js';
 
 async function loadPlaylistWithItems(playlistRow: typeof playlists.$inferSelect): Promise<Playlist> {
@@ -103,7 +104,10 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post('/api/v1/playlists', { preHandler: requireAuth }, async (req, reply) => {
+  app.post(
+    '/api/v1/playlists',
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    async (req, reply) => {
     const parsed = CreatePlaylistSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'Invalid playlist payload', issues: parsed.error.issues });
@@ -161,7 +165,7 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
 
   app.put<{ Params: { id: string } }>(
     '/api/v1/playlists/:id',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const parsed = UpdatePlaylistSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -235,7 +239,7 @@ export async function playlistRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string } }>(
     '/api/v1/playlists/:id',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const user = req.authUser!;
       const [existing] = await db

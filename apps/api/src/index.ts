@@ -1,10 +1,12 @@
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import websocket from '@fastify/websocket';
 import { config } from './config.js';
 import { bootstrapDatabase } from './db/bootstrap.js';
 import { pgClient } from './db/index.js';
+import { initPresenceBus, stopPresenceBus } from './lib/presence-bus.js';
 import { startQueue, stopQueue } from './lib/queue.js';
 import { ensureBucketExists } from './lib/s3.js';
 import { analyticsRoutes } from './routes/analytics.js';
@@ -42,11 +44,16 @@ async function main() {
     origin: true,
     credentials: true,
   });
+  await app.register(rateLimit, {
+    max: 300,
+    timeWindow: '1 minute',
+  });
   await app.register(cookie);
   await app.register(websocket);
 
   await bootstrapDatabase();
   await ensureBucketExists();
+  await initPresenceBus();
   await startQueue();
 
   await app.register(healthRoutes);
@@ -61,6 +68,7 @@ async function main() {
   await app.register(deviceRoutes);
 
   const shutdown = async () => {
+    await stopPresenceBus();
     await stopQueue();
     await app.close();
     await pgClient.end();

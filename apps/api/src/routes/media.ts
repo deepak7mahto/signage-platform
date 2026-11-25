@@ -12,11 +12,12 @@ import { db } from '../db/index.js';
 import { auditLogs, mediaAssets, playlistItems } from '../db/schema.js';
 import { enqueueMediaProcessing } from '../lib/queue.js';
 import {
-  computeObjectDigest,
   createPresignedGetUrl,
   createPresignedPutUrl,
   deleteS3Object,
+  headS3Object,
 } from '../lib/s3.js';
+import { requireRole } from '../middleware/rbac.js';
 import { pushToScreensUsingPlaylist } from '../ws/gateway.js';
 import { requireAuth } from './auth.js';
 import { registerMediaAppRoutes } from './media-apps.js';
@@ -87,7 +88,10 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
     return { items };
   });
 
-  app.post('/api/v1/media/upload-url', { preHandler: requireAuth }, async (req, reply) => {
+  app.post(
+    '/api/v1/media/upload-url',
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    async (req, reply) => {
     const parsed = UploadUrlRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'Invalid upload request', issues: parsed.error.issues });
@@ -130,7 +134,7 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { id: string } }>(
     '/api/v1/media/:id/complete',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const parsed = CompleteUploadRequestSchema.safeParse(req.body ?? {});
       if (!parsed.success) {
@@ -149,13 +153,13 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
       }
 
       try {
-        const digest = await computeObjectDigest(existing.objectKey);
+        const head = await headS3Object(existing.objectKey);
+        const sizeBytes = head.sizeBytes > 0 ? head.sizeBytes : existing.sizeBytes;
         const [updated] = await db
           .update(mediaAssets)
           .set({
             status: 'processing',
-            sha256: digest.sha256,
-            sizeBytes: digest.sizeBytes,
+            sizeBytes,
             durationMs: parsed.data.durationMs ?? existing.durationMs,
           })
           .where(eq(mediaAssets.id, existing.id))
@@ -170,14 +174,14 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
           action: 'media.uploaded',
           targetType: 'media_asset',
           targetId: existing.id,
-          metadata: { title: existing.title, sha256: digest.sha256, sizeBytes: digest.sizeBytes },
+          metadata: { title: existing.title, sizeBytes },
         });
 
         return { asset: toMediaAssetDto(updated, null, null) };
       } catch (err) {
         await db
           .update(mediaAssets)
-          .set({ status: 'failed' })
+          .set({ status: 'failed', failureReason: 'Uploaded object not found in storage' })
           .where(eq(mediaAssets.id, existing.id));
         req.log.error(err, 'Failed to verify uploaded object');
         return reply.code(400).send({ error: 'Uploaded object could not be verified in storage' });
@@ -187,7 +191,7 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string } }>(
     '/api/v1/media/:id',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const user = req.authUser!;
       const [existing] = await db
@@ -229,7 +233,7 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch<{ Params: { id: string } }>(
     '/api/v1/media/:id/approval',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireRole('owner', 'admin')] },
     async (req, reply) => {
       const user = req.authUser!;
       if (user.role !== 'owner' && user.role !== 'admin') {

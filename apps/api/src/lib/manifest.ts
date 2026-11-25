@@ -15,12 +15,40 @@ import {
   screenGroupMembers,
   screens,
 } from '../db/schema.js';
+import { sha256Hex, signManifest } from './crypto.js';
 import { createPresignedGetUrl } from './s3.js';
 
 export type ScreenRow = typeof screens.$inferSelect;
 
+export interface SignedManifestEnvelope {
+  manifest: DeviceManifest;
+  bodyJson: string;
+  etag: string;
+  kid: string;
+  signatureB64: string;
+  publicKeyB64: string;
+  serverTime: string;
+}
+
+const manifestCache = new Map<string, Omit<SignedManifestEnvelope, 'serverTime'>>();
+
+function pruneManifestCache(): void {
+  if (manifestCache.size <= 1000) return;
+  const firstKey = manifestCache.keys().next().value;
+  if (firstKey) manifestCache.delete(firstKey);
+}
+
 export async function buildDeviceManifest(screen: ScreenRow): Promise<DeviceManifest> {
+  const envelope = await buildSignedManifest(screen, 1);
+  return envelope.manifest;
+}
+
+export async function buildSignedManifest(
+  screen: ScreenRow,
+  schemaVersion: 1 | 2 = 1,
+): Promise<SignedManifestEnvelope> {
   const nowIso = new Date().toISOString();
+  const urlBucket = Math.floor(Date.now() / 600_000);
 
   const membershipRows = await db
     .select({ groupId: screenGroupMembers.groupId })
@@ -40,7 +68,7 @@ export async function buildDeviceManifest(screen: ScreenRow): Promise<DeviceMani
     .select()
     .from(schedules)
     .where(and(eq(schedules.orgId, screen.orgId), eq(schedules.enabled, true), targetCondition))
-    .orderBy(desc(schedules.priority));
+    .orderBy(desc(schedules.priority), desc(schedules.updatedAt), asc(schedules.id));
 
   const neededPlaylistIds = new Set<string>();
   if (screen.activePlaylistId) neededPlaylistIds.add(screen.activePlaylistId);
@@ -48,15 +76,40 @@ export async function buildDeviceManifest(screen: ScreenRow): Promise<DeviceMani
     neededPlaylistIds.add(s.playlistId);
   }
 
-  const playlistsMap: Record<string, ManifestPlaylist> = {};
+  const playlistRows =
+    neededPlaylistIds.size > 0
+      ? await db.select().from(playlists).where(inArray(playlists.id, [...neededPlaylistIds]))
+      : [];
+
   let versionSum = 0;
+  for (const pl of playlistRows) versionSum += pl.version;
 
+  const scheduleFingerprint = scheduleRows
+    .map((s) => `${s.id}:${s.updatedAt.toISOString()}:${s.priority}:${s.playlistId}`)
+    .join('|');
+  const screenFingerprint = [
+    screen.activePlaylistId ?? 'none',
+    screen.timezone,
+    screen.orientation,
+    JSON.stringify(screen.layoutConfig ?? null),
+    screen.programmaticFillUrl ?? '',
+  ].join('|');
+
+  const revisionDigest = sha256Hex(
+    `${schemaVersion}:${versionSum}:${scheduleFingerprint}:${screenFingerprint}`,
+  ).slice(0, 24);
+  const cacheKey = `${screen.id}:${revisionDigest}:${urlBucket}`;
+
+  const cached = manifestCache.get(cacheKey);
+  if (cached) {
+    return {
+      ...cached,
+      serverTime: nowIso,
+    };
+  }
+
+  const playlistsMap: Record<string, ManifestPlaylist> = {};
   if (neededPlaylistIds.size > 0) {
-    const playlistRows = await db
-      .select()
-      .from(playlists)
-      .where(inArray(playlists.id, [...neededPlaylistIds]));
-
     const allItemRows = await db
       .select({
         item: playlistItems,
@@ -106,7 +159,6 @@ export async function buildDeviceManifest(screen: ScreenRow): Promise<DeviceMani
     }
 
     for (const pl of playlistRows) {
-      versionSum += pl.version;
       playlistsMap[pl.id] = {
         id: pl.id,
         name: pl.name,
@@ -130,9 +182,10 @@ export async function buildDeviceManifest(screen: ScreenRow): Promise<DeviceMani
     endTime: s.endTime,
     validFrom: s.validFrom,
     validUntil: s.validUntil,
+    updatedAt: s.updatedAt.toISOString(),
   }));
 
-  return {
+  const stableBody = {
     screenId: screen.id,
     screenName: screen.name,
     timezone: screen.timezone,
@@ -140,8 +193,6 @@ export async function buildDeviceManifest(screen: ScreenRow): Promise<DeviceMani
     playlistId: fallbackPlaylist?.id ?? null,
     playlistName: fallbackPlaylist?.name ?? null,
     manifestVersion: versionSum + manifestSchedules.length,
-    generatedAt: nowIso,
-    serverTime: nowIso,
     items: fallbackPlaylist?.items ?? [],
     schedules: manifestSchedules,
     playlists: playlistsMap,
@@ -155,5 +206,32 @@ export async function buildDeviceManifest(screen: ScreenRow): Promise<DeviceMani
       sidebarTitle: screen.layoutConfig?.sidebarTitle ?? null,
       sidebarLines: screen.layoutConfig?.sidebarLines ?? [],
     },
+  };
+
+  const manifest: DeviceManifest = {
+    ...stableBody,
+    generatedAt: nowIso,
+    serverTime: nowIso,
+  };
+
+  const bodyObj = schemaVersion === 2 ? stableBody : manifest;
+  const bodyJson = JSON.stringify(bodyObj);
+  const etag = `"${sha256Hex(JSON.stringify(stableBody)).slice(0, 32)}"`;
+  const { kid, signatureB64, publicKeyB64 } = signManifest(bodyJson);
+
+  const cachedEntry = {
+    manifest,
+    bodyJson,
+    etag,
+    kid,
+    signatureB64,
+    publicKeyB64,
+  };
+  manifestCache.set(cacheKey, cachedEntry);
+  pruneManifestCache();
+
+  return {
+    ...cachedEntry,
+    serverTime: nowIso,
   };
 }

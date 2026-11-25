@@ -9,6 +9,7 @@ import {
 import { db } from '../db/index.js';
 import { auditLogs, playlists, schedules, screenGroups, screens } from '../db/schema.js';
 import { pushToGroup, pushToScreen } from '../ws/gateway.js';
+import { requireRole } from '../middleware/rbac.js';
 import { requireAuth } from './auth.js';
 
 async function validateTarget(
@@ -95,7 +96,10 @@ export async function scheduleRoutes(app: FastifyInstance): Promise<void> {
     return { items };
   });
 
-  app.post('/api/v1/schedules', { preHandler: requireAuth }, async (req, reply) => {
+  app.post(
+    '/api/v1/schedules',
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    async (req, reply) => {
     const parsed = CreateScheduleSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'Invalid schedule payload', issues: parsed.error.issues });
@@ -154,7 +158,7 @@ export async function scheduleRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch<{ Params: { id: string } }>(
     '/api/v1/schedules/:id',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const parsed = UpdateScheduleSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -221,7 +225,7 @@ export async function scheduleRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string } }>(
     '/api/v1/schedules/:id',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const user = req.authUser!;
       const [existing] = await db

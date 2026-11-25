@@ -55,6 +55,18 @@ export async function createPresignedGetUrl(
   return getSignedUrl(publicS3, command, { expiresIn: expiresInSeconds });
 }
 
+export async function headS3Object(
+  objectKey: string,
+): Promise<{ sizeBytes: number; contentType: string | null }> {
+  const head = await internalS3.send(
+    new HeadObjectCommand({ Bucket: config.S3_BUCKET, Key: objectKey }),
+  );
+  return {
+    sizeBytes: head.ContentLength ?? 0,
+    contentType: head.ContentType ?? null,
+  };
+}
+
 export async function computeObjectDigest(
   objectKey: string,
 ): Promise<{ sha256: string; sizeBytes: number }> {

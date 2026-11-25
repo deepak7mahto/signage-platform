@@ -1,11 +1,17 @@
-import type { Screen } from '@signage/shared';
+import type { PlaybackState, Screen } from '@signage/shared/contracts';
 import { screens } from '../db/schema.js';
+import { getCachedPresence } from '../lib/presence-bus.js';
 import { isDeviceConnected } from '../ws/gateway.js';
 
 export function computeScreenStatus(row: typeof screens.$inferSelect): Screen['status'] {
-  if (row.status === 'locked') return 'locked';
+  if (row.revokedAt !== null || row.status === 'locked') return 'locked';
   if (isDeviceConnected(row.id)) return 'online';
-  if (row.lastSeenAt && Date.now() - row.lastSeenAt.getTime() < 90_000) {
+  const cached = getCachedPresence(row.id);
+  const lastSeenMs = Math.max(
+    row.lastSeenAt ? row.lastSeenAt.getTime() : 0,
+    cached ? cached.lastSeenAt.getTime() : 0,
+  );
+  if (lastSeenMs > 0 && Date.now() - lastSeenMs < 90_000) {
     return 'online';
   }
   return 'offline';
@@ -15,6 +21,12 @@ export function toScreenDto(
   screen: typeof screens.$inferSelect,
   playlistName?: string | null,
 ): Screen {
+  const cached = getCachedPresence(screen.id);
+  const effectiveLastSeen =
+    cached && (!screen.lastSeenAt || cached.lastSeenAt > screen.lastSeenAt)
+      ? cached.lastSeenAt
+      : screen.lastSeenAt;
+
   return {
     id: screen.id,
     orgId: screen.orgId,
@@ -22,7 +34,7 @@ export function toScreenDto(
     location: screen.location,
     timezone: screen.timezone,
     status: computeScreenStatus(screen),
-    appVersion: screen.appVersion,
+    appVersion: cached?.appVersion ?? screen.appVersion,
     activePlaylistId: screen.activePlaylistId,
     activePlaylistName: playlistName ?? null,
     city: screen.city ?? null,
@@ -40,8 +52,17 @@ export function toScreenDto(
       sidebarLines: screen.layoutConfig?.sidebarLines ?? [],
     },
     programmaticFillUrl: screen.programmaticFillUrl ?? null,
-    hwInfo: screen.hwInfo,
-    lastSeenAt: screen.lastSeenAt ? screen.lastSeenAt.toISOString() : null,
+    hwInfo: cached?.hwInfo ?? screen.hwInfo,
+    lastSeenAt: effectiveLastSeen ? effectiveLastSeen.toISOString() : null,
     createdAt: screen.createdAt.toISOString(),
+    siteId: screen.siteId ?? null,
+    profileId: screen.profileId ?? null,
+    manifestVersion: cached?.manifestVersion ?? screen.manifestVersion ?? 0,
+    playbackState: ((cached?.playbackState ?? screen.playbackState) as PlaybackState) ?? 'unknown',
+    lastFrameAdvanceAt:
+      cached?.lastFrameAdvanceAt ??
+      (screen.lastFrameAdvanceAt ? screen.lastFrameAdvanceAt.toISOString() : null),
+    capabilities: cached?.capabilities ?? screen.capabilities ?? [],
+    revokedAt: screen.revokedAt ? screen.revokedAt.toISOString() : null,
   };
 }

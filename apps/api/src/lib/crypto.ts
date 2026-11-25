@@ -57,10 +57,15 @@ function getSigningKeys(): SigningKeys {
   return cachedKeys;
 }
 
-export function signManifest(payloadJson: string): { signatureB64: string; publicKeyB64: string } {
+export function signManifest(payloadJson: string): {
+  kid: string;
+  signatureB64: string;
+  publicKeyB64: string;
+} {
   const keys = getSigningKeys();
   const signature = crypto.sign(null, Buffer.from(payloadJson, 'utf8'), keys.privateKey);
   return {
+    kid: config.MANIFEST_KEY_ID,
     signatureB64: signature.toString('base64'),
     publicKeyB64: Buffer.from(keys.publicKeyPem, 'utf8').toString('base64'),
   };

@@ -9,6 +9,7 @@ import {
 import { db } from '../db/index.js';
 import { auditLogs, schedules, screenGroupMembers, screenGroups, screens } from '../db/schema.js';
 import { pushToScreens } from '../ws/gateway.js';
+import { requireRole } from '../middleware/rbac.js';
 import { requireAuth } from './auth.js';
 
 async function loadGroupDto(groupRow: typeof screenGroups.$inferSelect): Promise<ScreenGroup> {
@@ -40,7 +41,10 @@ export async function groupRoutes(app: FastifyInstance): Promise<void> {
     return { items };
   });
 
-  app.post('/api/v1/groups', { preHandler: requireAuth }, async (req, reply) => {
+  app.post(
+    '/api/v1/groups',
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
+    async (req, reply) => {
     const parsed = CreateScreenGroupSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'Invalid group payload', issues: parsed.error.issues });
@@ -95,7 +99,7 @@ export async function groupRoutes(app: FastifyInstance): Promise<void> {
 
   app.put<{ Params: { id: string } }>(
     '/api/v1/groups/:id',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const parsed = UpdateScreenGroupSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -160,7 +164,7 @@ export async function groupRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string } }>(
     '/api/v1/groups/:id',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'editor')] },
     async (req, reply) => {
       const user = req.authUser!;
       const [existing] = await db

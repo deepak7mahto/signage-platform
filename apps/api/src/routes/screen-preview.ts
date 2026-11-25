@@ -1,10 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import { and, eq } from 'drizzle-orm';
-import { HeartbeatRequestSchema, PopBatchRequestSchema } from '@signage/shared';
+import { and, eq, isNull } from 'drizzle-orm';
+import { HeartbeatRequestSchema, PopBatchRequestSchema } from '@signage/shared/contracts';
 import { db } from '../db/index.js';
 import { screens } from '../db/schema.js';
 import { buildDeviceManifest } from '../lib/manifest.js';
-import { ingestPopEvents } from '../lib/pop.js';
 import { requireAuth } from './auth.js';
 
 export function registerScreenPreviewRoutes(app: FastifyInstance): void {
@@ -16,7 +15,7 @@ export function registerScreenPreviewRoutes(app: FastifyInstance): void {
       const [screen] = await db
         .select()
         .from(screens)
-        .where(and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId)))
+        .where(and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId), isNull(screens.revokedAt)))
         .limit(1);
 
       if (!screen) return reply.code(404).send({ error: 'Screen not found' });
@@ -36,12 +35,11 @@ export function registerScreenPreviewRoutes(app: FastifyInstance): void {
       const [existing] = await db
         .select({ id: screens.id })
         .from(screens)
-        .where(and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId)))
+        .where(and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId), isNull(screens.revokedAt)))
         .limit(1);
       if (!existing) return reply.code(404).send({ error: 'Screen not found' });
 
-      const inserted = await ingestPopEvents(user.orgId, existing.id, parsed.data.events);
-      return { ok: true, inserted, serverTime: new Date().toISOString() };
+      return reply.code(204).send();
     },
   );
 
@@ -55,23 +53,13 @@ export function registerScreenPreviewRoutes(app: FastifyInstance): void {
       }
       const user = req.authUser!;
       const [existing] = await db
-        .select()
+        .select({ id: screens.id })
         .from(screens)
-        .where(and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId)))
+        .where(and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId), isNull(screens.revokedAt)))
         .limit(1);
       if (!existing) return reply.code(404).send({ error: 'Screen not found' });
 
-      await db
-        .update(screens)
-        .set({
-          status: 'online',
-          appVersion: parsed.data.appVersion ?? existing.appVersion,
-          hwInfo: parsed.data.hwInfo ?? existing.hwInfo,
-          lastSeenAt: new Date(),
-        })
-        .where(eq(screens.id, existing.id));
-
-      return { ok: true, serverTime: new Date().toISOString() };
+      return reply.code(204).send();
     },
   );
 }

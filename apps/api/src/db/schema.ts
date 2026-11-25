@@ -9,7 +9,8 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { CreativeConfig } from '@signage/shared';
+import type { CreativeConfig } from '@signage/shared/creatives';
+import type { ScreenLayoutConfig } from '@signage/shared/contracts';
 
 export const organizations = pgTable('organizations', {
   id: uuid('id').primaryKey(),
@@ -29,6 +30,43 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const userSessions = pgTable('user_sessions', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  refreshHash: text('refresh_hash').notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const sites = pgTable('sites', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  timezone: text('timezone').notNull().default('UTC'),
+  lanCacheUrl: text('lan_cache_url'),
+  alertPolicy: jsonb('alert_policy').$type<{
+    webhookUrl?: string;
+    webhookSecret?: string;
+    offlinePercentThreshold?: number;
+  } | null>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const deviceConfigProfiles = pgTable('device_config_profiles', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  config: jsonb('config').$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const mediaAssets = pgTable('media_assets', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id')
@@ -37,8 +75,8 @@ export const mediaAssets = pgTable('media_assets', {
   title: text('title').notNull(),
   type: text('type').notNull(),
   mimeType: text('mime_type').notNull(),
-  status: text('status').notNull().default('uploading'), // 'uploading' | 'processing' | 'ready' | 'failed'
-  approvalStatus: text('approval_status').notNull().default('approved'), // 'pending' | 'approved' | 'rejected'
+  status: text('status').notNull().default('uploading'),
+  approvalStatus: text('approval_status').notNull().default('approved'),
   objectKey: text('object_key').notNull(),
   thumbnailKey: text('thumbnail_key'),
   sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull().default(0),
@@ -47,6 +85,7 @@ export const mediaAssets = pgTable('media_assets', {
   width: integer('width'),
   height: integer('height'),
   codec: text('codec'),
+  failureReason: text('failure_reason'),
   appConfig: jsonb('app_config').$type<CreativeConfig | null>(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
@@ -80,6 +119,8 @@ export const screens = pgTable('screens', {
   orgId: uuid('org_id')
     .notNull()
     .references(() => organizations.id, { onDelete: 'cascade' }),
+  siteId: uuid('site_id').references(() => sites.id, { onDelete: 'set null' }),
+  profileId: uuid('profile_id').references(() => deviceConfigProfiles.id, { onDelete: 'set null' }),
   name: text('name').notNull(),
   location: text('location'),
   timezone: text('timezone').notNull().default('UTC'),
@@ -89,20 +130,16 @@ export const screens = pgTable('screens', {
   activePlaylistId: uuid('active_playlist_id').references(() => playlists.id, {
     onDelete: 'set null',
   }),
+  manifestVersion: integer('manifest_version').notNull().default(0),
+  playbackState: text('playback_state').notNull().default('unknown'),
+  lastFrameAdvanceAt: timestamp('last_frame_advance_at', { withTimezone: true }),
+  capabilities: jsonb('capabilities').$type<string[]>().notNull().default([]),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
   city: text('city'),
   venueType: text('venue_type'),
   orientation: text('orientation').notNull().default('landscape'),
   slotDurationSec: integer('slot_duration_sec').notNull().default(15),
-  layoutConfig: jsonb('layout_config').$type<{
-    template: 'fullscreen' | 'bottom_ticker' | 'split_sidebar';
-    fitMode?: 'contain' | 'cover' | 'blur_fill';
-    rotationDeg?: 0 | 90 | 180 | 270;
-    transition?: 'none' | 'fade' | 'slide_left' | 'zoom';
-    syncMode?: 'independent' | 'clock_sync';
-    tickerText?: string | null;
-    sidebarTitle?: string | null;
-    sidebarLines: string[];
-  } | null>(),
+  layoutConfig: jsonb('layout_config').$type<ScreenLayoutConfig | null>(),
   programmaticFillUrl: text('programmatic_fill_url'),
   hwInfo: jsonb('hw_info').$type<Record<string, unknown> | null>(),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
@@ -167,7 +204,7 @@ export const schedules = pgTable('schedules', {
   playlistId: uuid('playlist_id')
     .notNull()
     .references(() => playlists.id, { onDelete: 'cascade' }),
-  targetType: text('target_type').notNull(), // 'screen' | 'group'
+  targetType: text('target_type').notNull(),
   targetId: uuid('target_id').notNull(),
   priority: integer('priority').notNull().default(50),
   daysOfWeek: jsonb('days_of_week').$type<number[]>().notNull().default([0, 1, 2, 3, 4, 5, 6]),
@@ -204,6 +241,10 @@ export const screenCommands = pgTable('screen_commands', {
   payload: jsonb('payload').$type<Record<string, unknown> | null>(),
   status: text('status').notNull().default('queued'),
   detail: text('detail'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  coalesceKey: text('coalesce_key'),
+  attempts: integer('attempts').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   ackedAt: timestamp('acked_at', { withTimezone: true }),
 });

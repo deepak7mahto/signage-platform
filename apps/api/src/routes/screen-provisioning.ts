@@ -5,11 +5,15 @@ import { PairClaimRequestSchema, ProvisionScreenRequestSchema } from '@signage/s
 import { db } from '../db/index.js';
 import { auditLogs, pairingCodes, playlists, screens } from '../db/schema.js';
 import { generateOpaqueToken, sha256Hex } from '../lib/crypto.js';
+import { requireRole } from '../middleware/rbac.js';
 import { requireAuth } from './auth.js';
 import { toScreenDto } from './screen-dto.js';
 
 export function registerScreenProvisioningRoutes(app: FastifyInstance): void {
-  app.post('/api/v1/screens/pair', { preHandler: requireAuth }, async (req, reply) => {
+  app.post(
+    '/api/v1/screens/pair',
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'ops')] },
+    async (req, reply) => {
     const parsed = PairClaimRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'Invalid pairing request', issues: parsed.error.issues });
@@ -81,7 +85,10 @@ export function registerScreenProvisioningRoutes(app: FastifyInstance): void {
     return reply.code(201).send({ screen: toScreenDto(created, null) });
   });
 
-  app.post('/api/v1/screens/provision', { preHandler: requireAuth }, async (req, reply) => {
+  app.post(
+    '/api/v1/screens/provision',
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'ops')] },
+    async (req, reply) => {
     const parsed = ProvisionScreenRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'Invalid provision request', issues: parsed.error.issues });

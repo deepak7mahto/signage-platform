@@ -1,14 +1,12 @@
 import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import {
   SendScreenCommandSchema,
   UpdateScreenSchema,
   type Screen,
-  type ScreenCommand,
   type ScreenScreenshot,
-  type ServerToDeviceMessage,
-} from '@signage/shared';
+} from '@signage/shared/contracts';
 import { db } from '../db/index.js';
 import {
   auditLogs,
@@ -17,8 +15,10 @@ import {
   screenScreenshots,
   screens,
 } from '../db/schema.js';
-import { createPresignedGetUrl, createPresignedPutUrl } from '../lib/s3.js';
-import { pushToScreen } from '../ws/gateway.js';
+import { enqueueScreenCommand, toScreenCommandDto } from '../lib/commands.js';
+import { createPresignedGetUrl } from '../lib/s3.js';
+import { requireRole } from '../middleware/rbac.js';
+import { disconnectScreenSocket, pushToScreen } from '../ws/gateway.js';
 import { requireAuth } from './auth.js';
 import { toScreenDto } from './screen-dto.js';
 import { registerScreenPreviewRoutes } from './screen-preview.js';
@@ -31,7 +31,7 @@ export async function screenRoutes(app: FastifyInstance): Promise<void> {
       .select({ screen: screens, playlistName: playlists.name })
       .from(screens)
       .leftJoin(playlists, eq(screens.activePlaylistId, playlists.id))
-      .where(eq(screens.orgId, orgId))
+      .where(and(eq(screens.orgId, orgId), isNull(screens.revokedAt)))
       .orderBy(desc(screens.createdAt));
 
     const items: Screen[] = rows.map(({ screen, playlistName }) => toScreenDto(screen, playlistName));
@@ -47,7 +47,9 @@ export async function screenRoutes(app: FastifyInstance): Promise<void> {
         .select({ screen: screens, playlistName: playlists.name })
         .from(screens)
         .leftJoin(playlists, eq(screens.activePlaylistId, playlists.id))
-        .where(and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId)))
+        .where(
+          and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId), isNull(screens.revokedAt)),
+        )
         .limit(1);
 
       if (!row) {
@@ -77,21 +79,10 @@ export async function screenRoutes(app: FastifyInstance): Promise<void> {
         .orderBy(desc(screenCommands.createdAt))
         .limit(20);
 
-      const commands: ScreenCommand[] = cmdRows.map((c) => ({
-        id: c.id,
-        screenId: c.screenId,
-        command: c.command as ScreenCommand['command'],
-        payload: c.payload,
-        status: c.status as ScreenCommand['status'],
-        detail: c.detail,
-        createdAt: c.createdAt.toISOString(),
-        ackedAt: c.ackedAt ? c.ackedAt.toISOString() : null,
-      }));
-
       return {
         screen: toScreenDto(row.screen, row.playlistName),
         latestScreenshot,
-        commands,
+        commands: cmdRows.map(toScreenCommandDto),
       };
     },
   );
@@ -100,7 +91,7 @@ export async function screenRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { id: string } }>(
     '/api/v1/screens/:id/commands',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'ops')] },
     async (req, reply) => {
       const parsed = SendScreenCommandSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -111,60 +102,21 @@ export async function screenRoutes(app: FastifyInstance): Promise<void> {
       const [existing] = await db
         .select()
         .from(screens)
-        .where(and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId)))
+        .where(
+          and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId), isNull(screens.revokedAt)),
+        )
         .limit(1);
 
       if (!existing) {
         return reply.code(404).send({ error: 'Screen not found' });
       }
 
-      const commandId = crypto.randomUUID();
-      const nowIso = new Date().toISOString();
-      let dbPayload: Record<string, unknown> | null = parsed.data.payload ?? null;
-      let wsMsg: ServerToDeviceMessage;
+      const { command, pushed } = await enqueueScreenCommand(
+        existing,
+        parsed.data.command,
+        parsed.data.payload,
+      );
 
-      switch (parsed.data.command) {
-        case 'take_screenshot': {
-          const objectKey = `${user.orgId}/screenshots/${existing.id}/${commandId}.jpg`;
-          const uploadUrl = await createPresignedPutUrl(objectKey, 'image/jpeg', 300);
-          dbPayload = { objectKey };
-          wsMsg = { type: 'take_screenshot', commandId, uploadUrl, objectKey, serverTime: nowIso };
-          break;
-        }
-        case 'set_volume': {
-          const raw = Number(parsed.data.payload?.level ?? 50);
-          const level = Math.max(0, Math.min(100, Number.isFinite(raw) ? Math.round(raw) : 50));
-          dbPayload = { level };
-          wsMsg = { type: 'set_volume', commandId, level, serverTime: nowIso };
-          break;
-        }
-        case 'cec_power': {
-          const state = parsed.data.payload?.state === 'standby' ? 'standby' : 'on';
-          dbPayload = { state };
-          wsMsg = { type: 'cec_power', commandId, state, serverTime: nowIso };
-          break;
-        }
-        case 'reboot':
-          wsMsg = { type: 'reboot', commandId, serverTime: nowIso };
-          break;
-        default:
-          wsMsg = { type: 'sync_now', commandId, reason: 'manual_command', serverTime: nowIso };
-          break;
-      }
-
-      const [created] = await db
-        .insert(screenCommands)
-        .values({
-          id: commandId,
-          orgId: user.orgId,
-          screenId: existing.id,
-          command: parsed.data.command,
-          payload: dbPayload,
-          status: 'queued',
-        })
-        .returning();
-
-      const pushed = pushToScreen(existing.id, wsMsg);
       await db.insert(auditLogs).values({
         id: crypto.randomUUID(),
         orgId: user.orgId,
@@ -172,22 +124,10 @@ export async function screenRoutes(app: FastifyInstance): Promise<void> {
         action: `screen.command.${parsed.data.command}`,
         targetType: 'screen',
         targetId: existing.id,
-        metadata: { commandId, pushed, payload: dbPayload },
+        metadata: { commandId: command.id, pushed, payload: command.payload },
       });
 
-      return reply.code(201).send({
-        command: {
-          id: created.id,
-          screenId: created.screenId,
-          command: created.command as ScreenCommand['command'],
-          payload: created.payload,
-          status: created.status as ScreenCommand['status'],
-          detail: created.detail,
-          createdAt: created.createdAt.toISOString(),
-          ackedAt: null,
-        } satisfies ScreenCommand,
-        pushed,
-      });
+      return reply.code(201).send({ command, pushed });
     },
   );
 
@@ -195,7 +135,7 @@ export async function screenRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch<{ Params: { id: string } }>(
     '/api/v1/screens/:id',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'ops')] },
     async (req, reply) => {
       const parsed = UpdateScreenSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -206,7 +146,9 @@ export async function screenRoutes(app: FastifyInstance): Promise<void> {
       const [existing] = await db
         .select()
         .from(screens)
-        .where(and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId)))
+        .where(
+          and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId), isNull(screens.revokedAt)),
+        )
         .limit(1);
 
       if (!existing) {
@@ -281,13 +223,15 @@ export async function screenRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { id: string } }>(
     '/api/v1/screens/:id/sync',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireRole('owner', 'admin', 'ops')] },
     async (req, reply) => {
       const user = req.authUser!;
       const [existing] = await db
         .select()
         .from(screens)
-        .where(and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId)))
+        .where(
+          and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId), isNull(screens.revokedAt)),
+        )
         .limit(1);
 
       if (!existing) {
@@ -306,13 +250,15 @@ export async function screenRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string } }>(
     '/api/v1/screens/:id',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireRole('owner', 'admin')] },
     async (req, reply) => {
       const user = req.authUser!;
       const [existing] = await db
         .select()
         .from(screens)
-        .where(and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId)))
+        .where(
+          and(eq(screens.id, req.params.id), eq(screens.orgId, user.orgId), isNull(screens.revokedAt)),
+        )
         .limit(1);
 
       if (!existing) {
@@ -324,8 +270,26 @@ export async function screenRoutes(app: FastifyInstance): Promise<void> {
         reason: 'screen_deleted',
         serverTime: new Date().toISOString(),
       });
+      disconnectScreenSocket(existing.id, 'Screen revoked');
 
-      await db.delete(screens).where(eq(screens.id, existing.id));
+      await db
+        .update(screens)
+        .set({
+          revokedAt: new Date(),
+          status: 'locked',
+        })
+        .where(eq(screens.id, existing.id));
+
+      await db.insert(auditLogs).values({
+        id: crypto.randomUUID(),
+        orgId: user.orgId,
+        actorUserId: user.id,
+        action: 'screen.revoked',
+        targetType: 'screen',
+        targetId: existing.id,
+        metadata: { name: existing.name },
+      });
+
       return { ok: true };
     },
   );

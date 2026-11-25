@@ -78,6 +78,8 @@ function buildSpec() {
   const paths = {
     '/api/v1/health': { get: { summary: 'Health Check', responses: { '200': { description: 'OK' } } } },
     '/api/v1/auth/login': { post: { summary: 'Login', requestBody: jsonBody('LoginRequest'), responses: { '200': okJson('Authenticated user', ref('AuthUser')) } } },
+    '/api/v1/auth/refresh': { post: { summary: 'Rotate Refresh Session & Mint Access JWT', responses: { '200': okJson('Refreshed session', ref('AuthUser')) } } },
+    '/api/v1/auth/logout': { post: { summary: 'Revoke Refresh Session & Logout', responses: { '200': { description: 'Logged out' } } } },
     '/api/v1/auth/me': { get: { summary: 'Current User', responses: { '200': okJson('Session user', ref('AuthUser')) } } },
     '/api/v1/media': { get: { summary: 'List Media Assets', responses: { '200': okJson('Media list', { type: 'object', properties: { items: { type: 'array', items: ref('MediaAsset') } } }) } } },
     '/api/v1/media/app': { post: { summary: 'Create Interactive App/Addon Creative', requestBody: jsonBody('CreateAppAsset'), responses: { '201': okJson('Created app creative', ref('MediaAsset')) } } },
